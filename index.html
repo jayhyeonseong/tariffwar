@@ -1,369 +1,4 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>세균전 관세전쟁 5x5</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .game-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 20px;
-        }
-        .board {
-            display: grid;
-            grid-template-columns: repeat(5, 55px);
-            grid-template-rows: repeat(5, 55px);
-            gap: 2px;
-            background-color: #ccc;
-            padding: 5px;
-            border-radius: 5px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .cell {
-            width: 55px;
-            height: 55px;
-            background-color: #fff;
-            border-radius: 3px;
-            cursor: pointer;
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 12px;
-            transition: all 0.2s ease;
-        }
-        .cell:hover {
-            opacity: 0.8;
-            transform: scale(1.05);
-        }
-        .usa {
-            background-color: #3c3b6e;
-            border-radius: 50%;
-            position: relative;
-        }
-        .usa::after {
-            content: "USA";
-            position: absolute;
-            color: white;
-            font-size: 12px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-        .china {
-            background-color: #de2910;
-            position: relative;
-        }
-        .china::after {
-           content: "★";
-           position: absolute;
-           color: #ffde00;
-           font-size: 24px;
-        }
-        .wall {
-            background-color: #555;
-            position: relative;
-        }
-        .wall::before {
-            content: "";
-            position: absolute;
-            width: 70%;
-            height: 70%;
-            background-color: #333;
-            top: 15%;
-            left: 15%;
-        }
-        .visited {
-            background-color: #f0f0f0;
-            position: relative;
-            pointer-events: none;
-        }
-        .visited::after {
-            content: "X";
-            color: #999;
-            font-size: 18px;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-        .panel {
-            background-color: white;
-            padding: 15px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            width: 250px;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            margin: 5px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        button:hover:not(:disabled) {
-            background-color: #45a049;
-            transform: scale(1.05);
-        }
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-        }
-        #message {
-            margin: 10px 0;
-            min-height: 20px;
-            color: #d9534f;
-        }
-        #gameRules {
-            margin-top: 20px;
-            text-align: left;
-            background-color: #f9f9f9;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        .lastMove {
-            box-shadow: inset 0 0 0 3px yellow;
-        }
-        #turnCounter {
-            font-weight: bold;
-            color: #333;
-            margin-top: 10px;
-        }
-    </style>
-</head>
-<body>
-    <h1>세균전 관세전쟁 5x5</h1>
-    
-    <div class="game-container">
-        <div class="board" id="board"></div>
-        
-        <div class="panel">
-            <div id="turnInfo">게임 시작</div>
-            <div>
-                <span id="usaScore">미국: 1</span> | 
-                <span id="chinaScore">중국: 1</span>
-            </div>
-            <div id="turnCounter">턴: 1/25</div>
-            <div id="message"></div>
-            <button id="restartBtn">게임 재시작</button>
-            
-            <div id="gameRules">
-                <strong>게임 규칙:</strong>
-                <ul>
-                    <li>각 플레이어는 자신의 차례에 인접한 셀에 말을 놓을 수 있습니다.</li>
-                    <li>상대방 말과 접촉하면 상대방 말이 자신의 말로 바뀝니다.</li>
-                    <li><strong>한번 말을 놓은 곳에는 다시 말을 놓을 수 없습니다.</strong></li>
-                    <li>25턴이 지나거나, 모든 셀이 점령되거나, 한 플레이어의 점수가 0이 되면 게임이 종료됩니다.</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-    
-    <div class="modal" id="startModal">
-        <div class="panel">
-            <h2>세균전 관세전쟁</h2>
-            <p>플레이할 국가를 선택하세요:</p>
-            <button id="selectUSA">미국</button>
-            <button id="selectChina">중국</button>
-        </div>
-    </div>
-    
-    <div class="modal" id="resultModal" style="display: none;">
-        <div class="panel">
-            <h2 id="resultTitle">게임 종료!</h2>
-            <p id="resultDesc"></p>
-            <button id="newGameBtn">새 게임</button>
-        </div>
-    </div>
-
-    <script>
-        // 게임 상태
-        const game = {
-            board: [], // 보드 상태 (usa, china, wall, 또는 빈칸)
-            visitedCells: [], // 방문한 셀 (true, false)
-            size: 5,
-            currentPlayer: 'usa',
-            humanPlayer: '',
-            computerPlayer: '',
-            scores: { usa: 1, china: 1 },
-            turnCount: 1,
-            maxTurns: 25, // 최대 턴 수 25로 변경
-            lastMove: { x: -1, y: -1 },  // 마지막 이동 위치
-            moveHistory: []              // 이동 기록
-        };
-
-        // DOM 요소
-        const boardEl = document.getElementById('board');
-        const turnInfoEl = document.getElementById('turnInfo');
-        const usaScoreEl = document.getElementById('usaScore');
-        const chinaScoreEl = document.getElementById('chinaScore');
-        const turnCounterEl = document.getElementById('turnCounter');
-        const messageEl = document.getElementById('message');
-        const startModalEl = document.getElementById('startModal');
-        const resultModalEl = document.getElementById('resultModal');
-        const resultTitleEl = document.getElementById('resultTitle');
-        const resultDescEl = document.getElementById('resultDesc');
-
-        // 이벤트 리스너
-        document.getElementById('selectUSA').addEventListener('click', () => selectCountry('usa'));
-        document.getElementById('selectChina').addEventListener('click', () => selectCountry('china'));
-        document.getElementById('restartBtn').addEventListener('click', initGame);
-        document.getElementById('newGameBtn').addEventListener('click', initGame);
-
-        // 게임 초기화
-        function initGame() {
-            // 보드 초기화
-            game.board = Array(game.size).fill().map(() => Array(game.size).fill(''));
-            
-            // 방문한 셀 초기화 (모두 false로 설정)
-            game.visitedCells = Array(game.size).fill().map(() => Array(game.size).fill(false));
-            
-            // 초기 포지션 설정
-            game.board[0][0] = 'usa';
-            game.board[game.size-1][game.size-1] = 'china';
-            
-            // 초기 위치는 방문한 셀로 표시
-            game.visitedCells[0][0] = true;
-            game.visitedCells[game.size-1][game.size-1] = true;
-            
-            // 랜덤 벽 배치 (2~4개)
-            placeRandomWalls(Math.floor(Math.random() * 3) + 2);
-            
-            // 게임 상태 초기화
-            game.currentPlayer = 'usa';
-            game.scores = { usa: 1, china: 1 };
-            game.turnCount = 1;
-            game.lastMove = { x: -1, y: -1 };
-            game.moveHistory = [];
-            
-            // UI 업데이트
-            renderBoard();
-            updateInfo();
-            
-            // 모달 표시
-            startModalEl.style.display = 'flex';
-            resultModalEl.style.display = 'none';
-            messageEl.textContent = '';
-        }
-
-        // 랜덤 벽 배치
-        function placeRandomWalls(count) {
-            let wallsPlaced = 0;
-            
-            while (wallsPlaced < count) {
-                const x = Math.floor(Math.random() * game.size);
-                const y = Math.floor(Math.random() * game.size);
-                
-                // 초기 위치나 이미 벽이 있는 곳은 제외
-                if ((x === 0 && y === 0) || (x === game.size-1 && y === game.size-1) || game.board[y][x] === 'wall') {
-                    continue;
-                }
-                
-                // 벽 배치
-                game.board[y][x] = 'wall';
-                game.visitedCells[y][x] = true; // 벽도 방문한 셀로 표시
-                wallsPlaced++;
-            }
-        }
-
-        // 국가 선택
-        function selectCountry(country) {
-            game.humanPlayer = country;
-            game.computerPlayer = country === 'usa' ? 'china' : 'usa';
-            startModalEl.style.display = 'none';
-            
-            // 컴퓨터 차례일 경우
-            if (game.currentPlayer === game.computerPlayer) {
-                setTimeout(computerTurn, 1000);
-            }
-        }
-
-        // 보드 렌더링
-        function renderBoard() {
-            boardEl.innerHTML = '';
-            
-            for (let y = 0; y < game.size; y++) {
-                for (let x = 0; x < game.size; x++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'cell';
-                    
-                    const value = game.board[y][x];
-                    if (value === 'usa') {
-                        cell.classList.add('usa');
-                    } else if (value === 'china') {
-                        cell.classList.add('china');
-                    } else if (value === 'wall') {
-                        cell.classList.add('wall');
-                    } else if (game.visitedCells[y][x]) {
-                        // 빈 셀이지만 방문한 경우
-                        cell.classList.add('visited');
-                    }
-                    
-                    // 마지막 이동 위치 표시
-                    if (x === game.lastMove.x && y === game.lastMove.y) {
-                        cell.classList.add('lastMove');
-                    }
-                    
-                    cell.addEventListener('click', () => handleCellClick(x, y));
-                    boardEl.appendChild(cell);
-                }
-            }
-        }
-
-        // 게임 정보 업데이트
-        function updateInfo() {
-            turnInfoEl.textContent = `${game.currentPlayer === 'usa' ? '미국' : '중국'}의 턴`;
-            usaScoreEl.textContent = `미국: ${game.scores.usa}`;
-            chinaScoreEl.textContent = `중국: ${game.scores.china}`;
-            turnCounterEl.textContent = `턴: ${game.turnCount}/${game.maxTurns}`;
-        }
-        
-        // 셀 클릭 처리
-        function handleCellClick(x, y) {
-            if (game.currentPlayer !== game.humanPlayer) {
-                return;
-            }
-            
-            // 이미 방문한 셀인지 확인
-            if (game.visitedCells[y][x]) {
-                messageEl.textContent = '이미 방문한 곳입니다. 다른 곳을 선택하세요.';
-                return;
-            }
-            
-            const value = game.board[y][x];
-            
-            // 벽이나 자기 영역은 선택 불가
-            if (value === 'wall' || value === game.currentPlayer) {
-                return;
-            }
-            
-            // 인접한 셀 확인
+// 인접한 셀 확인
             if (!hasAdjacentCell(x, y, game.currentPlayer)) {
                 messageEl.textContent = '인접한 칸에만 놓을 수 있습니다.';
                 return;
@@ -414,7 +49,7 @@
                 const nx = x + dx;
                 const ny = y + dy;
                 
-                if (nx >= 0 && nx < game.size && ny >= 0 && ny < game.size) {
+                if (nx >= 0 && nx < game.size.width && ny >= 0 && ny < game.size.height) {
                     if (game.board[ny][nx] === player) {
                         return true;
                     }
@@ -435,7 +70,7 @@
                 const ny = y + dy;
                 
                 // 범위 확인
-                if (nx >= 0 && nx < game.size && ny >= 0 && ny < game.size) {
+                if (nx >= 0 && nx < game.size.width && ny >= 0 && ny < game.size.height) {
                     // 상대방 셀만 카운트
                     if (game.board[ny][nx] === opponent) {
                         count++;
@@ -457,7 +92,7 @@
                 const ny = y + dy;
                 
                 // 범위 확인
-                if (nx >= 0 && nx < game.size && ny >= 0 && ny < game.size) {
+                if (nx >= 0 && nx < game.size.width && ny >= 0 && ny < game.size.height) {
                     // 상대방 셀만 변경
                     if (game.board[ny][nx] === opponent) {
                         game.board[ny][nx] = game.currentPlayer;
@@ -523,10 +158,10 @@
 
         // 이동 가능한 위치가 있는지 확인
         function hasValidMove(player) {
-            for (let y = 0; y < game.size; y++) {
-                for (let x = 0; x < game.size; x++) {
+            for (let y = 0; y < game.size.height; y++) {
+                for (let x = 0; x < game.size.width; x++) {
                     // 방문하지 않은 셀이고, 빈 셀이거나 상대방 영역인 경우
-                    if (!game.visitedCells[y][x] && 
+                    if (game.activeCells[y][x] && !game.visitedCells[y][x] && 
                         (game.board[y][x] === '' || game.board[y][x] === (player === 'usa' ? 'china' : 'usa')) && 
                         hasAdjacentCell(x, y, player)) {
                         return true;
@@ -546,8 +181,8 @@
         function recalculateScores() {
             const scores = { usa: 0, china: 0 };
             
-            for (let y = 0; y < game.size; y++) {
-                for (let x = 0; x < game.size; x++) {
+            for (let y = 0; y < game.size.height; y++) {
+                for (let x = 0; x < game.size.width; x++) {
                     if (game.board[y][x] === 'usa') {
                         scores.usa++;
                     } else if (game.board[y][x] === 'china') {
@@ -600,10 +235,10 @@
             // 가능한 이동 찾기
             const validMoves = [];
             
-            for (let y = 0; y < game.size; y++) {
-                for (let x = 0; x < game.size; x++) {
+            for (let y = 0; y < game.size.height; y++) {
+                for (let x = 0; x < game.size.width; x++) {
                     // 방문하지 않은 셀이고, 빈 칸이나 상대 영역인 경우
-                    if (!game.visitedCells[y][x] && 
+                    if (game.activeCells[y][x] && !game.visitedCells[y][x] && 
                         (game.board[y][x] === '' || 
                          game.board[y][x] === (game.computerPlayer === 'usa' ? 'china' : 'usa')) && 
                         hasAdjacentCell(x, y, game.computerPlayer)) {
@@ -621,10 +256,10 @@
 
                         // 전략적 점수 조정
                         // 1. 코너나 가장자리는 가치가 높음
-                        if ((x === 0 || x === game.size-1) && (y === 0 || y === game.size-1)) {
+                        if ((x === 0 || x === game.size.width-1) && (y === 0 || y === game.size.height-1)) {
                             // 코너
                             score += 3;
-                        } else if (x === 0 || x === game.size-1 || y === 0 || y === game.size-1) {
+                        } else if (x === 0 || x === game.size.width-1 || y === 0 || y === game.size.height-1) {
                             // 가장자리
                             score += 1;
                         }
@@ -698,8 +333,8 @@
             }
         }
 
-        // 게임 시작
-        initGame();
+        // 게임 시작 - 맵 선택 화면 표시
+        showMapModal();
     </script>
 </body>
 </html>
