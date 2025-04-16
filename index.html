@@ -447,40 +447,104 @@
             
             // 초기 포지션 설정 (맵 타입에 따라 다르게)
             if (game.mapType === 'standard') {
+                // 기본 맵은 기존 방식대로 한 개씩만 배치
                 game.board[0][0] = 'usa';
                 game.board[config.height-1][config.width-1] = 'china';
                 game.visitedCells[0][0] = true;
                 game.visitedCells[config.height-1][config.width-1] = true;
-            } else if (game.mapType === 'large') {
-                game.board[0][0] = 'usa';
-                game.board[config.height-1][config.width-1] = 'china';
-                game.visitedCells[0][0] = true;
-                game.visitedCells[config.height-1][config.width-1] = true;
-            } else if (game.mapType === 'usa' || game.mapType === 'china') {
-                // 특수 맵의 경우 활성 셀 중 가장 왼쪽 상단과 오른쪽 하단에 초기 위치 설정
-                let usaPlaced = false;
-                let chinaPlaced = false;
                 
-                // 미국 위치 (왼쪽 상단 활성 셀)
-                for (let y = 0; y < config.height && !usaPlaced; y++) {
-                    for (let x = 0; x < config.width && !usaPlaced; x++) {
+                // 점수 초기화 (각 1개씩)
+                game.scores = { usa: 1, china: 1 };
+            } else if (game.mapType === 'large') {
+                // 8x8 맵의 경우 두 개씩 배치 (대각선으로)
+                game.board[0][0] = 'usa';
+                game.board[0][config.width-1] = 'china';
+                game.visitedCells[0][0] = true;
+                game.visitedCells[0][config.width-1] = true;
+                
+                game.board[config.height-1][0] = 'china';
+                game.board[config.height-1][config.width-1] = 'usa';
+                game.visitedCells[config.height-1][0] = true;
+                game.visitedCells[config.height-1][config.width-1] = true;
+                
+                // 점수 초기화 (각 2개씩)
+                game.scores = { usa: 2, china: 2 };
+            } else if (game.mapType === 'usa' || game.mapType === 'china') {
+                // 특수 맵의 경우 X자 형태로 배치
+                let activeCellsList = [];
+                
+                // 활성 셀 목록 생성
+                for (let y = 0; y < config.height; y++) {
+                    for (let x = 0; x < config.width; x++) {
                         if (game.activeCells[y][x]) {
-                            game.board[y][x] = 'usa';
-                            game.visitedCells[y][x] = true;
-                            usaPlaced = true;
+                            activeCellsList.push({x, y});
                         }
                     }
                 }
                 
-                // 중국 위치 (오른쪽 하단 활성 셀)
-                for (let y = config.height - 1; y >= 0 && !chinaPlaced; y--) {
-                    for (let x = config.width - 1; x >= 0 && !chinaPlaced; x--) {
-                        if (game.activeCells[y][x] && game.board[y][x] !== 'usa') {
-                            game.board[y][x] = 'china';
-                            game.visitedCells[y][x] = true;
-                            chinaPlaced = true;
-                        }
+                // 맵의 네 모서리에 가까운 활성 셀 찾기
+                let topLeft = null, topRight = null, bottomLeft = null, bottomRight = null;
+                let minTLDist = Infinity, minTRDist = Infinity, minBLDist = Infinity, minBRDist = Infinity;
+                
+                for (const cell of activeCellsList) {
+                    // 왼쪽 상단까지의 거리
+                    const tlDist = Math.sqrt(cell.x * cell.x + cell.y * cell.y);
+                    // 오른쪽 상단까지의 거리
+                    const trDist = Math.sqrt((config.width - 1 - cell.x) * (config.width - 1 - cell.x) + cell.y * cell.y);
+                    // 왼쪽 하단까지의 거리
+                    const blDist = Math.sqrt(cell.x * cell.x + (config.height - 1 - cell.y) * (config.height - 1 - cell.y));
+                    // 오른쪽 하단까지의 거리
+                    const brDist = Math.sqrt((config.width - 1 - cell.x) * (config.width - 1 - cell.x) + (config.height - 1 - cell.y) * (config.height - 1 - cell.y));
+                    
+                    if (tlDist < minTLDist) {
+                        minTLDist = tlDist;
+                        topLeft = cell;
                     }
+                    if (trDist < minTRDist) {
+                        minTRDist = trDist;
+                        topRight = cell;
+                    }
+                    if (blDist < minBLDist) {
+                        minBLDist = blDist;
+                        bottomLeft = cell;
+                    }
+                    if (brDist < minBRDist) {
+                        minBRDist = brDist;
+                        bottomRight = cell;
+                    }
+                }
+                
+                // X자 형태로 배치 (미국과 중국이 대각선으로 마주보게)
+                if (topLeft && bottomRight && topRight && bottomLeft) {
+                    game.board[topLeft.y][topLeft.x] = 'usa';
+                    game.board[bottomRight.y][bottomRight.x] = 'usa';
+                    game.visitedCells[topLeft.y][topLeft.x] = true;
+                    game.visitedCells[bottomRight.y][bottomRight.x] = true;
+                    
+                    game.board[topRight.y][topRight.x] = 'china';
+                    game.board[bottomLeft.y][bottomLeft.x] = 'china';
+                    game.visitedCells[topRight.y][topRight.x] = true;
+                    game.visitedCells[bottomLeft.y][bottomLeft.x] = true;
+                    
+                    // 점수 초기화 (각 2개씩)
+                    game.scores = { usa: 2, china: 2 };
+                } else {
+                    // 예상치 못한 상황에 대비한 기본 배치
+                    const centerX = Math.floor(config.width / 2);
+                    const centerY = Math.floor(config.height / 2);
+                    
+                    game.board[centerY-1][centerX-1] = 'usa';
+                    game.board[centerY+1][centerX+1] = 'usa';
+                    game.visitedCells[centerY-1][centerX-1] = true;
+                    game.visitedCells[centerY+1][centerX+1] = true;
+                    
+                    game.board[centerY-1][centerX+1] = 'china';
+                    game.board[centerY+1][centerX-1] = 'china';
+                    game.visitedCells[centerY-1][centerX+1] = true;
+                    game.visitedCells[centerY+1][centerX-1] = true;
+                    
+                    // 점수 초기화 (각 2개씩)
+                    game.scores = { usa: 2, china: 2 };
                 }
             }
             
@@ -491,7 +555,6 @@
             
             // 게임 상태 초기화
             game.currentPlayer = 'usa';
-            game.scores = { usa: 1, china: 1 };
             game.turnCount = 1;
             game.lastMove = { x: -1, y: -1 };
             game.moveHistory = [];
