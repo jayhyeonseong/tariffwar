@@ -139,7 +139,7 @@
             left: 50%;
             transform: translate(-50%, -50%);
         }
-        .panel {
+         .panel {
             background-color: white;
             padding: 15px;
             border-radius: 5px;
@@ -251,8 +251,16 @@
         .map-preview-pacific {
             background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="70" viewBox="0 0 100 70"><rect x="5" y="5" width="90" height="60" fill="lightblue" stroke="gray" stroke-width="1"/><path d="M5,5 L20,10 L25,25 L15,35 L5,35 Z" fill="white" stroke="gray" stroke-width="1"/><path d="M70,5 L95,5 L95,20 L85,25 L75,20 L70,10 Z" fill="white" stroke="gray" stroke-width="1"/><path d="M5,45 L15,50 L15,65 L5,65 Z" fill="white" stroke="gray" stroke-width="1"/><path d="M75,50 L85,45 L95,45 L95,60 L80,65 L70,60 Z" fill="white" stroke="gray" stroke-width="1"/></svg>');
         }
+        .map-preview-island {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="70" viewBox="0 0 100 70"><rect x="5" y="5" width="90" height="60" fill="lightblue" stroke="gray" stroke-width="1"/><circle cx="50" cy="35" r="20" fill="white" stroke="gray" stroke-width="1"/><circle cx="15" cy="15" r="8" fill="white" stroke="gray" stroke-width="1"/><circle cx="85" cy="15" r="8" fill="white" stroke="gray" stroke-width="1"/><circle cx="15" cy="55" r="8" fill="white" stroke="gray" stroke-width="1"/><circle cx="85" cy="55" r="8" fill="white" stroke="gray" stroke-width="1"/></svg>');
+        }
+        .map-preview-maze {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="70" viewBox="0 0 100 70"><rect x="5" y="5" width="90" height="60" fill="white" stroke="gray" stroke-width="1"/><path d="M20,5 L20,20 L35,20 L35,35 L20,35 L20,50 L35,50 L35,65 M50,5 L50,20 L65,20 L65,35 L50,35 L50,50 L65,50 L65,65 M80,5 L80,65" stroke="gray" stroke-width="2" fill="none" /></svg>');
+        }
         .hidden-cell {
-            visibility: hidden;
+             background-color: #b0c4de; /* 연한 청회색(Light Steel Blue) */
+             border: 1px solid #a0b0c0;
+             visibility: visible; /* 보이게 설정 */
         }
         .mode-option {
             width: 200px;
@@ -290,6 +298,7 @@
         /* 다중 모드 관련 새로운 스타일 */
         .multi-map-selection {
             display: flex;
+            flex-wrap: wrap;
             justify-content: center;
             gap: 20px;
             margin: 20px 0;
@@ -405,6 +414,14 @@
         .imf-score {
             background-color: #9C27B0;
         }
+        #playerOrderDisplay {
+            margin: 10px 0;
+            padding: 5px;
+            border-radius: 5px;
+            background-color: #f5f5f5;
+            font-size: 14px;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
@@ -416,6 +433,7 @@
         <div class="panel">
             <div id="turnInfo">게임 시작</div>
             <div id="scoresDisplay"></div>
+            <div id="playerOrderDisplay"></div>
             <div id="turnCounter">턴: 1/25</div>
             <div id="message"></div>
             <button id="restartBtn">게임 재시작</button>
@@ -424,6 +442,7 @@
                 <strong>게임 규칙:</strong>
                 <ul>
                     <li>각 플레이어는 자신의 차례에 인접한 셀에 말을 놓을 수 있습니다.</li>
+                    <li>모든 말은 상하좌우로만 움직일 수 있습니다.</li>
                     <li>상대방 말과 접촉하면 상대방 말이 자신의 말로 바뀝니다.</li>
                     <li><strong>한번 말을 놓은 곳에는 다시 말을 놓을 수 없습니다.</strong></li>
                     <li>최대 턴이 지나거나, 모든 셀이 점령되거나, 한 플레이어의 점수가 0이 되면 게임이 종료됩니다.</li>
@@ -431,7 +450,6 @@
             </div>
         </div>
     </div>
-    
     <!-- 모드 선택 모달 -->
     <div class="modal" id="modeModal">
         <div class="panel" style="width: 450px;">
@@ -479,18 +497,26 @@
         </div>
     </div>
     
-    <!-- 다중 맵 선택 모달 -->
+    <!-- 다중 맵 선택 모달 (수정됨) -->
     <div class="modal" id="multiMapModal">
         <div class="panel" style="width: 450px;">
             <h2>다중 모드 맵 선택</h2>
-            <div class="multi-map-selection">
-                <div class="multi-map-option selected" data-map="trident">
+            <div class="multi-map-selection" style="flex-wrap: wrap; max-width: 420px;">
+                <div class="multi-map-option selected" data-map="trident" style="width: 180px; margin-bottom: 15px;">
                     <div class="multi-map-preview map-preview-trident"></div>
                     <span>삼지창 맵 (3인)</span>
                 </div>
-                <div class="multi-map-option" data-map="pacific">
+                <div class="multi-map-option" data-map="pacific" style="width: 180px; margin-bottom: 15px;">
                     <div class="multi-map-preview map-preview-pacific"></div>
                     <span>태평양 분지도 맵 (4인)</span>
+                </div>
+                <div class="multi-map-option" data-map="islandMap" style="width: 180px; margin-bottom: 15px;">
+                    <div class="multi-map-preview map-preview-island"></div>
+                    <span>섬 맵 (4인)</span>
+                </div>
+                <div class="multi-map-option" data-map="mazeMap" style="width: 180px; margin-bottom: 15px;">
+                    <div class="multi-map-preview map-preview-maze"></div>
+                    <span>미로 맵 (3인)</span>
                 </div>
             </div>
             <button id="nextToPlayerSelect">다음</button>
@@ -559,7 +585,7 @@
         </div>
     </div>
 <script>
-        // 게임 상태
+// 게임 상태
         const game = {
             board: [], // 보드 상태 (usa, china, wall, 또는 빈칸)
             visitedCells: [], // 방문한 셀 (true, false)
@@ -625,6 +651,22 @@
                 cellSize: 45,
                 wallCount: { min: 3, max: 6 },
                 maxTurns: 64
+            },
+            // 섬맵 (14x14 - 4인 모드로 수정)
+            islandMap: {
+                width: 14,
+                height: 14,
+                cellSize: 32,
+                wallCount: { min: 5, max: 10 },
+                maxTurns: 130
+            },
+            // 미로맵 (14x14 - 3인 모드로 수정)
+            mazeMap: {
+                width: 10,
+                height: 10,
+                cellSize: 38,
+                wallCount: { min: 3, max: 6 },
+                maxTurns: 60
             }
         };
 
@@ -688,7 +730,37 @@
             [1,0,1,1,1,1,0,1],
             [1,1,1,1,1,1,1,1]
         ];
-
+        
+        // 수정된 섬맵 템플릿 (14x14 - 4인 모드, 모든 작은 섬에서 중앙 섬으로 가는 경로 추가됨)
+        const islandMapTemplate = [
+            [0,0,0,0,1,1,1,1,1,1,0,0,0,0],
+            [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+            [0,0,1,1,0,0,1,1,0,0,1,1,0,0],
+            [0,1,1,0,0,0,1,1,0,0,0,1,1,0],
+            [1,1,0,0,0,1,1,1,1,0,0,0,1,1],
+            [1,1,0,0,1,1,1,1,1,1,0,0,1,1],
+            [1,1,1,0,1,1,1,1,1,1,1,1,1,1], 
+            [1,1,1,0,1,1,1,1,1,1,0,1,1,1], 
+            [1,1,0,0,1,1,1,1,1,1,0,0,1,1],
+            [1,1,0,1,1,1,1,1,1,1,0,1,1,1], 
+            [0,1,1,1,0,1,1,1,1,0,1,1,1,0], 
+            [0,0,1,1,0,0,1,1,0,0,1,1,0,0],
+            [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+            [0,0,0,0,1,1,1,1,1,1,0,0,0,0]
+        ];
+    // 더 복잡한 미로맵 템플릿 - 
+        const mazeMapTemplate = [
+            [1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,1,0,0,1,0,0,1],
+            [1,0,1,1,1,1,1,1,0,1],
+            [1,0,1,0,0,1,0,1,0,1],
+            [1,1,1,0,1,1,0,1,1,1],
+            [1,0,1,0,1,0,0,1,0,1],
+            [1,0,1,0,1,1,1,1,0,1],
+            [1,0,1,1,1,0,0,1,0,1],
+            [1,0,0,0,1,1,0,1,0,1],
+            [1,1,1,1,1,1,1,1,1,1]
+        ];
         // DOM 요소
         const boardEl = document.getElementById('board');
         const turnInfoEl = document.getElementById('turnInfo');
@@ -703,6 +775,7 @@
         const resultModalEl = document.getElementById('resultModal');
         const resultTitleEl = document.getElementById('resultTitle');
         const resultDescEl = document.getElementById('resultDesc');
+        const playerOrderDisplayEl = document.getElementById('playerOrderDisplay');
 
         // 기본 이벤트 리스너
         document.getElementById('oneVsOneMode').addEventListener('click', () => selectGameMode('oneVsOne'));
@@ -765,7 +838,8 @@
                 this.classList.add('selected');
             });
         });
-// 게임 모드 선택 모달 표시
+
+        // 게임 모드 선택 모달 표시
         function showModeModal() {
             modeModalEl.style.display = 'flex';
             mapModalEl.style.display = 'none';
@@ -834,6 +908,12 @@
             } else if (game.multiMode === 'pacific') {
                 pacificPlayerModalEl.style.display = 'flex';
                 document.querySelector('#pacificPlayerModal .player-option[data-player="usa"]').classList.add('selected');
+            } else if (game.multiMode === 'islandMap') {
+                pacificPlayerModalEl.style.display = 'flex';
+                document.querySelector('#pacificPlayerModal .player-option[data-player="usa"]').classList.add('selected');
+            } else if (game.multiMode === 'mazeMap') {
+                tridentPlayerModalEl.style.display = 'flex';
+                document.querySelector('#tridentPlayerModal .player-option[data-player="usa"]').classList.add('selected');
             }
         }
 
@@ -848,7 +928,7 @@
             game.maxTurns = config.maxTurns;
             
             // 플레이어 순서 설정
-            game.playerOrder = ['usa', 'china'];
+            game.playerOrder = shuffleArray(['usa', 'china']);
             
             // 타이틀 업데이트
             document.title = `세균전 관세전쟁 ${config.width}x${config.height}`;
@@ -871,15 +951,29 @@
                 selectedPlayerEl = document.querySelector('#tridentPlayerModal .player-option.selected');
                 game.mapType = 'trident';
                 
-                // 트라이던트 모드에서는 3명의 플레이어
-                game.playerOrder = ['usa', 'china', 'row'];
+                // 트라이던트 모드에서는 3명의 플레이어, 순서를 랜덤화
+                game.playerOrder = shuffleArray(['usa', 'china', 'row']);
             } else if (game.multiMode === 'pacific') {
                 pacificPlayerModalEl.style.display = 'none';
                 selectedPlayerEl = document.querySelector('#pacificPlayerModal .player-option.selected');
                 game.mapType = 'pacific';
                 
-                // 태평양 모드에서는 4명의 플레이어
-                game.playerOrder = ['usa', 'china', 'wto', 'imf'];
+                // 태평양 모드에서는 4명의 플레이어, 순서를 랜덤화
+                game.playerOrder = shuffleArray(['usa', 'china', 'wto', 'imf']);
+            } else if (game.multiMode === 'islandMap') {
+                pacificPlayerModalEl.style.display = 'none';
+                selectedPlayerEl = document.querySelector('#pacificPlayerModal .player-option.selected');
+                game.mapType = 'islandMap';
+                
+                // 섬맵 모드에서는 4명의 플레이어, 순서를 랜덤화
+                game.playerOrder = shuffleArray(['usa', 'china', 'wto', 'imf']);
+            } else if (game.multiMode === 'mazeMap') {
+                tridentPlayerModalEl.style.display = 'none';
+                selectedPlayerEl = document.querySelector('#tridentPlayerModal .player-option.selected');
+                game.mapType = 'mazeMap';
+                
+                // 미로맵 모드에서는 3명의 플레이어, 순서를 랜덤화
+                game.playerOrder = shuffleArray(['usa', 'china', 'row']);
             }
             
             // 사람 플레이어 설정
@@ -927,6 +1021,10 @@
                 setActiveCellsFromTemplate(tridentMapTemplate);
             } else if (game.mapType === 'pacific') {
                 setActiveCellsFromTemplate(pacificBasinMapTemplate);
+            } else if (game.mapType === 'islandMap') {
+                setActiveCellsFromTemplate(islandMapTemplate);
+            } else if (game.mapType === 'mazeMap') {
+                setActiveCellsFromTemplate(mazeMapTemplate);
             }
             
             // 초기 점수 설정
@@ -966,7 +1064,8 @@
                 }
             }
         }
-// 초기 점수 설정
+
+        // 초기 점수 설정
         function initializeScores() {
             game.scores = {};
             
@@ -979,105 +1078,237 @@
         // 초기 배치 설정
         function placeInitialPieces() {
             if (game.mapType === 'standard') {
-                // 기본 맵은 기존 방식대로 한 개씩만 배치
-                game.board[0][0] = 'usa';
-                game.board[game.size.height-1][game.size.width-1] = 'china';
-                game.visitedCells[0][0] = true;
-                game.visitedCells[game.size.height-1][game.size.width-1] = true;
+                // 기본 맵에서는 모서리에 랜덤하게 배치
+                const startPositions = [
+                    {x: 0, y: 0},
+                    {x: game.size.width-1, y: game.size.height-1}
+                ];
                 
-                // 초기 점수 설정
-                game.scores.usa = 1;
-                game.scores.china = 1;
+                // 플레이어 순서 랜덤화
+                const shuffledPlayers = shuffleArray([...game.playerOrder]);
+                
+                // 초기 점수 초기화
+                game.playerOrder.forEach(player => {
+                    game.scores[player] = 0;
+                });
+                
+                // 각 위치에 플레이어 배치
+                for (let i = 0; i < shuffledPlayers.length; i++) {
+                    const pos = startPositions[i];
+                    const player = shuffledPlayers[i];
+                    
+                    game.board[pos.y][pos.x] = player;
+                    game.visitedCells[pos.y][pos.x] = true;
+                    game.scores[player]++;
+                }
             } 
             else if (game.mapType === 'large') {
-                // 8x8 맵의 경우 두 개씩 배치 (대각선으로)
-                game.board[0][0] = 'usa';
-                game.board[0][game.size.width-1] = 'china';
-                game.visitedCells[0][0] = true;
-                game.visitedCells[0][game.size.width-1] = true;
+                // 8x8 맵의 경우 X자 형태로 두 개씩 배치
+                const startPositions = [
+                    [{x: 0, y: 0}, {x: game.size.width-1, y: game.size.height-1}],
+                    [{x: game.size.width-1, y: 0}, {x: 0, y: game.size.height-1}]
+                ];
                 
-                game.board[game.size.height-1][0] = 'china';
-                game.board[game.size.height-1][game.size.width-1] = 'usa';
-                game.visitedCells[game.size.height-1][0] = true;
-                game.visitedCells[game.size.height-1][game.size.width-1] = true;
+                // 플레이어 순서 랜덤화
+                const shuffledPlayers = shuffleArray([...game.playerOrder]);
                 
-                // 점수 초기화 (각 2개씩)
-                game.scores.usa = 2;
-                game.scores.china = 2;
+                // 초기 점수 초기화
+                game.playerOrder.forEach(player => {
+                    game.scores[player] = 0;
+                });
+                
+                // 각 위치에 플레이어 배치
+                for (let i = 0; i < shuffledPlayers.length; i++) {
+                    const positions = startPositions[i];
+                    const player = shuffledPlayers[i];
+                    
+                    // 각 플레이어는 대각선 반대편에 2개씩 배치
+                    for (const pos of positions) {
+                        game.board[pos.y][pos.x] = player;
+                        game.visitedCells[pos.y][pos.x] = true;
+                        game.scores[player]++;
+                    }
+                }
             } 
             else if (game.mapType === 'usa' || game.mapType === 'china') {
-                placeFourCornerPieces(['usa', 'china']);
+                // 플레이어 랜덤하게 선택
+                const shuffledPlayers = shuffleArray([...game.playerOrder]);
+                placeFourCornerPieces(shuffledPlayers);
             }
             else if (game.mapType === 'trident') {
                 // 삼지창 맵에서는 각 가지 끝에 플레이어 배치
                 const activeCells = findActiveCellsEdges();
                 
-                // 북쪽 끝에 usa 배치
-                const northCell = activeCells.find(cell => cell.y === 0);
-                if (northCell) {
-                    game.board[northCell.y][northCell.x] = 'usa';
-                    game.visitedCells[northCell.y][northCell.x] = true;
-                    game.scores.usa++;
-                }
+                // 시작 위치 정의
+                const startPositions = [
+                    // 북쪽 끝
+                    activeCells.find(cell => cell.y === 0),
+                    // 왼쪽 하단 끝
+                    activeCells.find(cell => 
+                        cell.y === game.size.height - 1 && cell.x < game.size.width / 2),
+                    // 오른쪽 하단 끝
+                    activeCells.filter(cell => 
+                        cell.y === game.size.height - 1 && cell.x >= game.size.width / 2)
+                        .sort((a, b) => b.x - a.x)[0]
+                ];
                 
-                // 왼쪽 하단 끝에 china 배치
-                const southWestCell = activeCells.find(cell => 
-                    cell.y === game.size.height - 1 && cell.x < game.size.width / 2);
-                if (southWestCell) {
-                    game.board[southWestCell.y][southWestCell.x] = 'china';
-                    game.visitedCells[southWestCell.y][southWestCell.x] = true;
-                    game.scores.china++;
-                }
+                // 플레이어 순서 랜덤화
+                const shuffledPlayers = shuffleArray([...game.playerOrder]);
                 
-                // 오른쪽 하단 끝에 row 배치
-                const southEastCell = activeCells.find(cell => 
-                    cell.y === game.size.height - 1 && cell.x >= game.size.width / 2);
-                if (southEastCell) {
-                    game.board[southEastCell.y][southEastCell.x] = 'row';
-                    game.visitedCells[southEastCell.y][southEastCell.x] = true;
-                    game.scores.row++;
+                // 초기 점수 초기화
+                game.playerOrder.forEach(player => {
+                    game.scores[player] = 0;
+                });
+                
+                // 각 위치에 플레이어 배치
+                for (let i = 0; i < shuffledPlayers.length; i++) {
+                    const pos = startPositions[i];
+                    const player = shuffledPlayers[i];
+                    
+                    if (pos) {
+                        game.board[pos.y][pos.x] = player;
+                        game.visitedCells[pos.y][pos.x] = true;
+                        game.scores[player]++;
+                    }
                 }
             }
             else if (game.mapType === 'pacific') {
                 // 태평양 분지도 맵에서는 각 대륙에 플레이어 배치
                 const activeCells = findActiveCellsEdges();
                 
-                // 북미(왼쪽 상단)에 usa 배치
-                const northWestCell = activeCells.find(cell => 
-                    cell.y === 0 && cell.x < game.size.width / 3);
-                if (northWestCell) {
-                    game.board[northWestCell.y][northWestCell.x] = 'usa';
-                    game.visitedCells[northWestCell.y][northWestCell.x] = true;
-                    game.scores.usa++;
-                }
+                // 시작 위치 정의
+                const startPositions = [
+                    // 북미(왼쪽 상단)
+                    activeCells.find(cell => 
+                        cell.y === 0 && cell.x < game.size.width / 3),
+                    // 아시아(오른쪽 상단)
+                    activeCells.filter(cell => 
+                        cell.y === 0 && cell.x >= game.size.width * 2 / 3)
+                        .sort((a, b) => b.x - a.x)[0],
+                    // 호주(오른쪽 하단)
+                    activeCells.filter(cell => 
+                        cell.y === game.size.height - 1 && cell.x >= game.size.width * 2 / 3)
+                        .sort((a, b) => b.x - a.x)[0],
+                    // 남미(왼쪽 하단)
+                    activeCells.find(cell => 
+                        cell.y === game.size.height - 1 && cell.x < game.size.width / 3)
+                ];
                 
-                // 아시아(오른쪽 상단)에 china 배치
-                const northEastCell = activeCells.find(cell => 
-                    cell.y === 0 && cell.x >= game.size.width * 2 / 3);
-                if (northEastCell) {
-                    game.board[northEastCell.y][northEastCell.x] = 'china';
-                    game.visitedCells[northEastCell.y][northEastCell.x] = true;
-                    game.scores.china++;
-                }
+                // 플레이어 순서 랜덤화
+                const shuffledPlayers = shuffleArray([...game.playerOrder]);
                 
-                // 호주(오른쪽 하단)에 wto 배치
-                const southEastCell = activeCells.find(cell => 
-                    cell.y === game.size.height - 1 && cell.x >= game.size.width * 2 / 3);
-                if (southEastCell) {
-                    game.board[southEastCell.y][southEastCell.x] = 'wto';
-                    game.visitedCells[southEastCell.y][southEastCell.x] = true;
-                    game.scores.wto++;
-                }
+                // 초기 점수 초기화
+                game.playerOrder.forEach(player => {
+                    game.scores[player] = 0;
+                });
                 
-                // 남미(왼쪽 하단)에 imf 배치
-                const southWestCell = activeCells.find(cell => 
-                    cell.y === game.size.height - 1 && cell.x < game.size.width / 3);
-                if (southWestCell) {
-                    game.board[southWestCell.y][southWestCell.x] = 'imf';
-                    game.visitedCells[southWestCell.y][southWestCell.x] = true;
-                    game.scores.imf++;
+                // 각 위치에 플레이어 배치
+                for (let i = 0; i < shuffledPlayers.length; i++) {
+                    const pos = startPositions[i];
+                    const player = shuffledPlayers[i];
+                    
+                    if (pos) {
+                        game.board[pos.y][pos.x] = player;
+                        game.visitedCells[pos.y][pos.x] = true;
+                        game.scores[player]++;
+                    }
                 }
             }
+            else if (game.mapType === 'islandMap') {
+                // 섬맵 전용 초기 배치 함수 호출
+                placeInitialPiecesIslandMap();
+            }
+            else if (game.mapType === 'mazeMap') {
+                // 미로맵 전용 초기 배치 함수 호출
+                placeInitialPiecesMazeMap();
+            }
+        }
+
+        // 플레이어 초기 배치를 수정하는 함수 - 섬맵용
+        function placeInitialPiecesIslandMap() {
+            // 섬맵에서 각 플레이어 위치 정의
+            const startPositions = [
+                {x: 2, y: 2},     // 왼쪽 상단 작은 섬
+                {x: 11, y: 2},    // 오른쪽 상단 작은 섬
+                {x: 2, y: 11},    // 왼쪽 하단 작은 섬
+                {x: 11, y: 11}    // 오른쪽 하단 작은 섬
+            ];
+            
+            // 플레이어 순서 랜덤화
+            const shuffledPlayers = shuffleArray([...game.playerOrder]);
+            
+            // 초기 점수 초기화
+            game.playerOrder.forEach(player => {
+                game.scores[player] = 0;
+            });
+            
+            // 각 위치에 플레이어 배치
+            for (let i = 0; i < shuffledPlayers.length; i++) {
+                const pos = startPositions[i];
+                const player = shuffledPlayers[i];
+                
+                // 말을 확실히 배치하기 위해 활성 셀 여부 체크 후 배치
+                if (game.activeCells[pos.y][pos.x]) {
+                    game.board[pos.y][pos.x] = player;
+                    game.visitedCells[pos.y][pos.x] = true;
+                    game.scores[player]++;
+                } else {
+                    // 만약 지정된 위치가 비활성 셀이면 근처의 활성 셀 찾기
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            const nx = pos.x + dx;
+                            const ny = pos.y + dy;
+                            if (nx >= 0 && nx < game.size.width && ny >= 0 && ny < game.size.height && 
+                                game.activeCells[ny][nx] && !game.visitedCells[ny][nx]) {
+                                game.board[ny][nx] = player;
+                                game.visitedCells[ny][nx] = true;
+                                game.scores[player]++;
+                                return; // 말을 놓았으면 함수 종료
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 플레이어 초기 배치를 수정하는 함수 - 미로맵용
+        function placeInitialPiecesMazeMap() {
+            // 미로맵에서 각 플레이어 위치 정의
+            const startPositions = [
+                {x: 2, y: 2},     // 왼쪽 상단
+                {x: 7, y: 2},     // 오른쪽 상단
+                {x: 2, y: 7}      // 왼쪽 하단
+            ];
+            
+            // 플레이어 순서 랜덤화
+            const shuffledPlayers = shuffleArray([...game.playerOrder]);
+            
+            // 초기 점수 초기화
+            game.playerOrder.forEach(player => {
+                game.scores[player] = 0;
+            });
+            
+            // 각 위치에 플레이어 배치
+            for (let i = 0; i < shuffledPlayers.length; i++) {
+                const pos = startPositions[i];
+                const player = shuffledPlayers[i];
+                
+                // 셀이 활성화되어 있는지 확인
+                if (game.activeCells[pos.y][pos.x]) {
+                    game.board[pos.y][pos.x] = player;
+                    game.visitedCells[pos.y][pos.x] = true;
+                    game.scores[player]++;
+                }
+            }
+        }
+
+        // 배열 랜덤 섞기 함수 (Fisher-Yates 알고리즘)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
         }
 
         // X자 형태로 코너에 말 배치
@@ -1194,9 +1425,9 @@
             }
             
             return edges;
+        }
 
-}
-// 랜덤 벽 배치
+        // 랜덤 벽 배치
         function placeRandomWalls(count) {
             let wallsPlaced = 0;
             let attempts = 0;
@@ -1276,6 +1507,23 @@
             
             // 턴 카운터 업데이트
             turnCounterEl.textContent = `턴: ${game.turnCount}/${game.maxTurns}`;
+
+            // 플레이어 순서 정보 업데이트
+            updatePlayerOrderDisplay();
+        }
+        
+        // 플레이어 순서 표시 함수 추가
+        function updatePlayerOrderDisplay() {
+            if (!playerOrderDisplayEl) return;
+            
+            let orderText = '게임 순서: ';
+            game.playerOrder.forEach((player, index) => {
+                orderText += playerInfo[player].displayName;
+                if (index < game.playerOrder.length - 1) {
+                    orderText += ' → ';
+                }
+            });
+            playerOrderDisplayEl.textContent = orderText;
         }
         
         // 점수 표시 업데이트
@@ -1290,8 +1538,8 @@
                 scoresDisplayEl.appendChild(scoreItem);
             }
         }
-        
-              // 셀 클릭 처리
+
+        // 셀 클릭 처리 (수정됨)
         function handleCellClick(x, y) {
             if (game.isGameOver || game.currentPlayer !== game.humanPlayer) {
                 return;
@@ -1354,16 +1602,8 @@
                     // 점수 재계산
                     recalculateScores();
                     
-                    // 게임 종료 확인 전에 색상 변화 보이도록 지연
-                    const isLastCell = isBoardFull();
-                    
-                    if (isLastCell) {
-                        setTimeout(() => {
-                            gameOver();
-                        }, 300); // 마지막 셀이면 잠시 지연 후 게임 종료
-                    } else {
-                        endTurn(); // 아니면 일반적인 턴 종료
-                    }
+                    // 게임 종료 확인 (자동 종료 안함)
+                    endTurn(); // 턴 종료 처리
                 }, 100);
             }
         }
@@ -1434,7 +1674,8 @@
             
             return capturedCells;
         }
-// 턴 종료
+
+        // 턴 종료
         function endTurn() {
             // 점수를 재계산
             recalculateScores();
@@ -1531,10 +1772,10 @@
             return false;
         }
 
-        // 게임 종료 조건 확인 - 수정된 부분
+        // 게임 종료 조건 확인 (수정됨)
         function checkGameOver() {
             // 최대 턴에 도달했는지 확인
-            if (game.turnCount >= game.maxTurns) {
+            if (game.turnCount > game.maxTurns) {
                 gameOver();
                 return true;
             }
@@ -1553,13 +1794,26 @@
             }
             
             // 보드가 완전히 가득 찼는지 확인
-            if (isBoardFull()) {
+            // 빈 셀이 있는지 확인
+            let hasEmptyCell = false;
+            for (let y = 0; y < game.size.height; y++) {
+                for (let x = 0; x < game.size.width; x++) {
+                    // 활성 셀이면서 아직 방문하지 않은 경우가 있다면 보드가 가득 차지 않음
+                    if (game.activeCells[y][x] && !game.visitedCells[y][x]) {
+                        hasEmptyCell = true;
+                        break;
+                    }
+                }
+                if (hasEmptyCell) break;
+            }
+            
+            // 빈 셀이 없을 때만 게임 종료
+            if (!hasEmptyCell) {
                 gameOver();
                 return true;
             }
             
             // 모든 플레이어가 더 이상 이동할 수 없는 상태인지 확인
-            // 이 함수는 빈 셀이 있지만 아무도 놓을 수 없는 경우만 true 반환
             if (allPlayersStuck()) {
                 gameOver();
                 return true;
@@ -1568,230 +1822,301 @@
             return false;
         }
 
-        // 보드가 가득 찼는지 확인 - 수정된 부분
+        // 보드가 가득 찼는지 확인
         function isBoardFull() {
             for (let y = 0; y < game.size.height; y++) {
                 for (let x = 0; x < game.size.width; x++) {
                     // 활성 셀이면서 아직 방문하지 않은 경우가 있다면 보드가 가득 차지 않음
                     if (game.activeCells[y][x] && !game.visitedCells[y][x]) {
-                        return false; // 아직 방문하지 않은 활성 셀이 있음
-                    }
-                }
-            }
-            return true; // 모든 활성 셀이 방문됨
+                       return false; // 아직 방문하지 않은 활성 셀이 있음
+                   }
+               }
+           }
+           return true; // 모든 활성 셀이 방문됨
+       }
+
+       // 점수 재계산
+       function recalculateScores() {
+           const scores = {};
+           
+           // 모든 플레이어의 점수 초기화
+           game.playerOrder.forEach(player => {
+               scores[player] = 0;
+           });
+           
+           // 보드를 검사하여 점수 계산
+           for (let y = 0; y < game.size.height; y++) {
+               for (let x = 0; x < game.size.width; x++) {
+                   const cell = game.board[y][x];
+                   if (game.playerOrder.includes(cell)) {
+                       scores[cell]++;
+                   }
+               }
+           }
+           
+           game.scores = scores;
+       }
+
+       // 게임 종료
+       function gameOver() {
+           game.isGameOver = true;
+           
+           // 최종 점수 재계산
+           recalculateScores();
+           
+           // 승자 확인
+           const winningSortedPlayers = [...game.playerOrder].sort((a, b) => 
+               game.scores[b] - game.scores[a]);
+           
+           const winner = winningSortedPlayers[0];
+           const isMultiWinner = winningSortedPlayers.length > 1 && 
+               game.scores[winningSortedPlayers[0]] === game.scores[winningSortedPlayers[1]];
+           
+           // 게임 종료 이유 파악
+           let reason = "";
+           if (game.turnCount >= game.maxTurns) {
+               reason = `${game.maxTurns}턴이 종료되었습니다. `;
+           } else if (isBoardFull()) {
+               reason = "모든 셀이 점령되었습니다. ";
+           } else {
+               // 제거된 플레이어 확인
+               for (const player of game.playerOrder) {
+                   if (game.scores[player] <= 0) {
+                       const playerName = playerInfo[player].displayName;
+                       reason += `${playerName}가 제거되었습니다. `;
+                   }
+               }
+           }
+           
+           // 결과 표시
+           if (isMultiWinner) {
+               resultTitleEl.textContent = '무승부!';
+           } else {
+               resultTitleEl.textContent = `${playerInfo[winner].displayName} 승리!`;
+           }
+           
+           // 최종 점수 문자열 생성
+           let scoreText = '최종 점수 - ';
+           for (const player of game.playerOrder) {
+               scoreText += `${playerInfo[player].displayName}: ${game.scores[player]} `;
+           }
+           
+           resultDescEl.textContent = `${reason}${scoreText}`;
+           resultModalEl.style.display = 'flex';
+       }
+
+       // 컴퓨터 턴
+       function computerTurn() {
+           if (game.isGameOver || !game.computerPlayers.includes(game.currentPlayer)) {
+               return;
+           }
+           
+           // 가능한 이동 찾기
+           const validMoves = findValidMoves(game.currentPlayer);
+           
+           if (validMoves.length > 0) {
+               // 점수 기준 정렬
+               validMoves.sort((a, b) => b.score - a.score);
+               
+               // 최고 점수 이동 선택 (전략적 랜덤성 추가)
+               let selectedIndex = 0;
+               
+               // 랜덤 요소 적용
+               if (Math.random() < 0.3 + (game.turnCount / 50)) {
+                   // 턴이 진행될수록 랜덤성 증가
+                   const randomFactor = Math.min(0.5, 0.3 + (game.turnCount / 50));
+                   
+                   if (Math.random() < randomFactor && validMoves.length > 1) {
+                       // 가끔은 최고 점수가 아닌 다른 이동 선택
+                       selectedIndex = Math.floor(Math.random() * Math.min(validMoves.length, 3));
+                   }
+               }
+               
+               const move = validMoves[selectedIndex];
+               
+               // 상대방 영역이면 점수 조정
+               const opponent = game.board[move.y][move.x];
+               if (opponent && opponent !== game.currentPlayer) {
+                   game.scores[opponent]--;
+               }
+               
+               // 이동 실행
+               game.board[move.y][move.x] = game.currentPlayer;
+               game.scores[game.currentPlayer]++;
+               
+               // 방문한 셀로 표시
+               game.visitedCells[move.y][move.x] = true;
+               
+               // 마지막 이동 위치 기록
+               game.lastMove = { x: move.x, y: move.y };
+               
+               // 이동 기록 추가
+               game.moveHistory.push({ x: move.x, y: move.y, player: game.currentPlayer });
+               
+               // 주변 상대방 셀 흡수
+               const capturedCells = absorbAdjacentCells(move.x, move.y);
+               
+               if (capturedCells > 0) {
+                   messageEl.textContent = `컴퓨터(${playerInfo[game.currentPlayer].displayName})가 ${capturedCells}개의 말을 흡수했습니다!`;
+               } else {
+                   messageEl.textContent = `컴퓨터(${playerInfo[game.currentPlayer].displayName})가 이동했습니다`;
+               }
+               
+               endTurn();
+           } else {
+               messageEl.textContent = `컴퓨터(${playerInfo[game.currentPlayer].displayName})가 이동할 곳이 없습니다`;
+               endTurn();
+           }
+       }
+
+       // 유효한 이동 목록 찾기
+       function findValidMoves(player) {
+           const validMoves = [];
+           
+           for (let y = 0; y < game.size.height; y++) {
+               for (let x = 0; x < game.size.width; x++) {
+                   // 방문하지 않은 셀이고, 빈 칸이나 상대 영역인 경우
+                   if (game.activeCells[y][x] && !game.visitedCells[y][x] && 
+                       (game.board[y][x] === '' || 
+                        (game.board[y][x] !== player && game.board[y][x] !== 'wall')) && 
+                       hasAdjacentCell(x, y, player)) {
+                       
+                       // 점수 계산: 얼마나 많은 상대 셀을 흡수할 수 있는지
+                       let absorptionScore = countAdjacentOpponentCells(x, y, player);
+                       
+                       // 기본 점수 + 흡수 점수
+                       let score = 1 + absorptionScore;
+                       
+                       // 상대방 영역이면 추가 점수
+                       if (game.board[y][x] && game.board[y][x] !== player) {
+                           score += 1;
+                       }
+
+                       // 전략적 점수 조정
+                       // 1. 코너나 가장자리는 가치가 높음
+                       if ((x === 0 || x === game.size.width-1) && (y === 0 || y === game.size.height-1)) {
+                           // 코너
+                           score += 3;
+                       } else if (x === 0 || x === game.size.width-1 || y === 0 || y === game.size.height-1) {
+                           // 가장자리
+                           score += 1;
+                       }
+                       
+                       // 2. 게임 진행 상황에 따른 전략 변경
+                       if (game.turnCount > 10) {
+                           // 게임 후반에는 더 공격적으로
+                           
+                           // 점수가 가장 높은 플레이어 찾기
+                           const maxScore = Math.max(...Object.values(game.scores));
+                           const topPlayers = game.playerOrder.filter(p => game.scores[p] === maxScore);
+                           
+                           if (game.scores[player] < maxScore) {
+                               // 지고 있을 때는 더 위험한 이동도 감수
+                               score += absorptionScore; // 흡수 점수 두 배로
+                               
+                               // 1등 플레이어를 공격할 기회가 있으면 추가 점수
+                               if (game.board[y][x] && topPlayers.includes(game.board[y][x])) {
+                                   score += 5;
+                               }
+                           } else if (topPlayers.includes(player)) {
+                               // 1등일 때는 방어적으로
+                               score += 2; // 안전한 이동에 가중치
+                           }
+                       }
+                       
+                       // 다중 모드에서의 추가 전략
+                       if (game.gameMode === 'multi') {
+                           // 약한 플레이어 공략
+                           const weakPlayers = game.playerOrder.filter(p => 
+                               p !== player && game.scores[p] > 0 && game.scores[p] < game.scores[player] / 2);
+                           
+                           if (game.board[y][x] && weakPlayers.includes(game.board[y][x])) {
+                               score += 3; // 약한 플레이어 공략에 추가 점수
+                           }
+                       }
+                       
+                       validMoves.push({x, y, score});
+                   }
+               }
+           }
+           
+           return validMoves;
+       }
+
+    // 중국 국기 스타일 수정 - 별이 제대로 보이도록 수정
+        const chinaStyleFix = `
+        .china {
+            background-color: #de2910 !important;
+            position: relative !important;
+            border-radius: 4px !important;
+        }
+        .china::after {
+            content: "★" !important;
+            position: absolute !important;
+            color: #ffde00 !important;
+            font-size: 24px !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            z-index: 100 !important;
+        }
+        `;
+
+        const usaStyleFix = `
+        .usa {
+            background-color: #3c3b6e !important;
+            border-radius: 50% !important;
+            position: relative !important;
+        }
+        .usa::after {
+            content: "USA" !important;
+            position: absolute !important;
+            color: white !important;
+            font-size: 12px !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            z-index: 100 !important;
+        }
+        `;
+        
+        const rowStyleFix = `
+        .row {
+            background-color: #607D8B !important;
+            position: relative !important;
+            border-radius: 5px !important;
+        }
+        .row::after {
+            content: "🌍" !important;
+            position: absolute !important;
+            font-size: 20px !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            z-index: 100 !important;
+        }
+        `;
+        // 스타일 적용 함수 수정
+        function fixStyles() {
+            const styleEl = document.createElement('style');
+            styleEl.textContent = chinaStyleFix + usaStyleFix + rowStyleFix;
+            document.head.appendChild(styleEl);
         }
 
-        // 점수 재계산
-        function recalculateScores() {
-            const scores = {};
-            
-            // 모든 플레이어의 점수 초기화
-            game.playerOrder.forEach(player => {
-                scores[player] = 0;
-            });
-            
-            // 보드를 검사하여 점수 계산
-            for (let y = 0; y < game.size.height; y++) {
-                for (let x = 0; x < game.size.width; x++) {
-                    const cell = game.board[y][x];
-                    if (game.playerOrder.includes(cell)) {
-                        scores[cell]++;
-                    }
-                }
-            }
-            
-            game.scores = scores;
-        }
-// 게임 종료
-        function gameOver() {
-            game.isGameOver = true;
-            
-            // 최종 점수 재계산
-            recalculateScores();
-            
-            // 승자 확인
-            const winningSortedPlayers = [...game.playerOrder].sort((a, b) => 
-                game.scores[b] - game.scores[a]);
-            
-            const winner = winningSortedPlayers[0];
-            const isMultiWinner = winningSortedPlayers.length > 1 && 
-                game.scores[winningSortedPlayers[0]] === game.scores[winningSortedPlayers[1]];
-            
-            // 게임 종료 이유 파악
-            let reason = "";
-            if (game.turnCount >= game.maxTurns) {
-                reason = `${game.maxTurns}턴이 종료되었습니다. `;
-            } else if (isBoardFull()) {
-                reason = "모든 셀이 점령되었습니다. ";
-            } else {
-                // 제거된 플레이어 확인
-                for (const player of game.playerOrder) {
-                    if (game.scores[player] <= 0) {
-                        const playerName = playerInfo[player].displayName;
-                        reason += `${playerName}가 제거되었습니다. `;
-                    }
-                }
-            }
-            
-            // 결과 표시
-            if (isMultiWinner) {
-                resultTitleEl.textContent = '무승부!';
-            } else {
-                resultTitleEl.textContent = `${playerInfo[winner].displayName} 승리!`;
-            }
-            
-            // 최종 점수 문자열 생성
-            let scoreText = '최종 점수 - ';
-            for (const player of game.playerOrder) {
-                scoreText += `${playerInfo[player].displayName}: ${game.scores[player]} `;
-            }
-            
-            resultDescEl.textContent = `${reason}${scoreText}`;
-            resultModalEl.style.display = 'flex';
-        }
+        // 즉시 스타일 적용
+        fixStyles();
 
-        // 컴퓨터 턴
-        function computerTurn() {
-            if (game.isGameOver || !game.computerPlayers.includes(game.currentPlayer)) {
-                return;
-            }
-            
-            // 가능한 이동 찾기
-            const validMoves = findValidMoves(game.currentPlayer);
-            
-            if (validMoves.length > 0) {
-                // 점수 기준 정렬
-                validMoves.sort((a, b) => b.score - a.score);
-                
-                // 최고 점수 이동 선택 (전략적 랜덤성 추가)
-                let selectedIndex = 0;
-                
-                // 랜덤 요소 적용
-                if (Math.random() < 0.3 + (game.turnCount / 50)) {
-                    // 턴이 진행될수록 랜덤성 증가
-                    const randomFactor = Math.min(0.5, 0.3 + (game.turnCount / 50));
-                    
-                    if (Math.random() < randomFactor && validMoves.length > 1) {
-                        // 가끔은 최고 점수가 아닌 다른 이동 선택
-                        selectedIndex = Math.floor(Math.random() * Math.min(validMoves.length, 3));
-                    }
-                }
-                
-                const move = validMoves[selectedIndex];
-                
-                // 상대방 영역이면 점수 조정
-                const opponent = game.board[move.y][move.x];
-                if (opponent && opponent !== game.currentPlayer) {
-                    game.scores[opponent]--;
-                }
-                
-                // 이동 실행
-                game.board[move.y][move.x] = game.currentPlayer;
-                game.scores[game.currentPlayer]++;
-                
-                // 방문한 셀로 표시
-                game.visitedCells[move.y][move.x] = true;
-                
-                // 마지막 이동 위치 기록
-                game.lastMove = { x: move.x, y: move.y };
-                
-                // 이동 기록 추가
-                game.moveHistory.push({ x: move.x, y: move.y, player: game.currentPlayer });
-                
-                // 주변 상대방 셀 흡수
-                const capturedCells = absorbAdjacentCells(move.x, move.y);
-                
-                if (capturedCells > 0) {
-                    messageEl.textContent = `컴퓨터(${playerInfo[game.currentPlayer].displayName})가 ${capturedCells}개의 말을 흡수했습니다!`;
-                } else {
-                    messageEl.textContent = `컴퓨터(${playerInfo[game.currentPlayer].displayName})가 이동했습니다`;
-                }
-                
-                endTurn();
-            } else {
-                messageEl.textContent = `컴퓨터(${playerInfo[game.currentPlayer].displayName})가 이동할 곳이 없습니다`;
-                endTurn();
-            }
-        }
+        // 게임 초기화 시 스타일 수정 함수 호출
+        const originalInitGame = initGame;
+        initGame = function() {
+            originalInitGame.apply(this, arguments);
+            fixStyles(); // 스타일 수정 적용
+        };
 
-        // 유효한 이동 목록 찾기
-        function findValidMoves(player) {
-            const validMoves = [];
-            
-            for (let y = 0; y < game.size.height; y++) {
-                for (let x = 0; x < game.size.width; x++) {
-                    // 방문하지 않은 셀이고, 빈 칸이나 상대 영역인 경우
-                    if (game.activeCells[y][x] && !game.visitedCells[y][x] && 
-                        (game.board[y][x] === '' || 
-                         (game.board[y][x] !== player && game.board[y][x] !== 'wall')) && 
-                        hasAdjacentCell(x, y, player)) {
-                        
-                        // 점수 계산: 얼마나 많은 상대 셀을 흡수할 수 있는지
-                        let absorptionScore = countAdjacentOpponentCells(x, y, player);
-                        
-                        // 기본 점수 + 흡수 점수
-                        let score = 1 + absorptionScore;
-                        
-                        // 상대방 영역이면 추가 점수
-                        if (game.board[y][x] && game.board[y][x] !== player) {
-                            score += 1;
-                        }
-
-                        // 전략적 점수 조정
-                        // 1. 코너나 가장자리는 가치가 높음
-                        if ((x === 0 || x === game.size.width-1) && (y === 0 || y === game.size.height-1)) {
-                            // 코너
-                            score += 3;
-                        } else if (x === 0 || x === game.size.width-1 || y === 0 || y === game.size.height-1) {
-                            // 가장자리
-                            score += 1;
-                        }
-                        
-                        // 2. 게임 진행 상황에 따른 전략 변경
-                        if (game.turnCount > 10) {
-                            // 게임 후반에는 더 공격적으로
-                            
-                            // 점수가 가장 높은 플레이어 찾기
-                            const maxScore = Math.max(...Object.values(game.scores));
-                            const topPlayers = game.playerOrder.filter(p => game.scores[p] === maxScore);
-                            
-                            if (game.scores[player] < maxScore) {
-                                // 지고 있을 때는 더 위험한 이동도 감수
-                                score += absorptionScore; // 흡수 점수 두 배로
-                                
-                                // 1등 플레이어를 공격할 기회가 있으면 추가 점수
-                                if (game.board[y][x] && topPlayers.includes(game.board[y][x])) {
-                                    score += 5;
-                                }
-                            } else if (topPlayers.includes(player)) {
-                                // 1등일 때는 방어적으로
-                                score += 2; // 안전한 이동에 가중치
-                            }
-                        }
-                        
-                        // 다중 모드에서의 추가 전략
-                        if (game.gameMode === 'multi') {
-                            // 약한 플레이어 공략
-                            const weakPlayers = game.playerOrder.filter(p => 
-                                p !== player && game.scores[p] > 0 && game.scores[p] < game.scores[player] / 2);
-                            
-                            if (game.board[y][x] && weakPlayers.includes(game.board[y][x])) {
-                                score += 3; // 약한 플레이어 공략에 추가 점수
-                            }
-                        }
-                        
-                        validMoves.push({x, y, score});
-                    }
-                }
-            }
-            
-            return validMoves;
-        }
-
-        // 페이지 로드 시 모드 선택 모달 표시
+        // 페이지 로드 시도 적용
         document.addEventListener('DOMContentLoaded', () => {
+            fixStyles();
             showModeModal();
         });
-    </script>
+</script>
 </body>
-</html>
