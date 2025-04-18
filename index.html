@@ -533,6 +533,68 @@
             font-size: 14px;
             line-height: 1.4;
         }
+
+        /* 새로운 특수 기능 관련 스타일 */
+        .special-turn-message {
+            background-color: #ffe0b2;
+            color: #e65100;
+            padding: 8px 12px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(230, 81, 0, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(230, 81, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(230, 81, 0, 0); }
+        }
+        
+        .diagonal-available {
+            box-shadow: inset 0 0 0 2px #ff9800;
+        }
+        
+        .disputed-cell {
+            box-shadow: inset 0 0 0 2px #ff0000;
+        }
+        
+        .breakable-wall {
+            box-shadow: inset 0 0 0 3px #ffeb3b;
+            cursor: pointer;
+        }
+        
+        .wall-break-mode .wall:not(.breakable-wall) {
+            opacity: 0.5;
+        }
+        
+        .special-button {
+            background-color: #ff9800;
+            margin-top: 10px;
+        }
+        
+        .special-button:disabled {
+            background-color: #ccc;
+        }
+        
+        #specialFeaturesInfo {
+            background-color: #e3f2fd;
+            padding: 8px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 12px;
+            text-align: left;
+        }
+        
+        .special-feature-badge {
+            display: inline-block;
+            background-color: #ff9800;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+            margin-left: 5px;
+        }
     </style>
 </head>
 <body>
@@ -547,7 +609,11 @@
             <div id="scoresDisplay"></div>
             <div id="playerOrderDisplay"></div>
             <div id="turnCounter">턴: 1/25</div>
+            <div id="specialTurnMessage" class="special-turn-message" style="display: none;">특별 턴: 대각선 이동이 가능합니다!</div>
             <div id="message"></div>
+            <div id="specialFeatures" style="display: none;">
+                <button id="breakWallBtn" class="special-button">장벽 파괴</button>
+            </div>
             <button id="restartBtn">게임 재시작</button>
             
             <div id="gameRules">
@@ -558,6 +624,14 @@
                     <li>상대방 말과 접촉하면 상대방 말이 자신의 말로 바뀝니다.</li>
                     <li><strong>한번 말을 놓은 곳에는 다시 말을 놓을 수 없습니다.</strong></li>
                     <li>최대 턴이 지나거나, 모든 셀이 점령되거나, 한 플레이어의 점수가 0이 되면 게임이 종료됩니다.</li>
+                </ul>
+            </div>
+            <div id="specialFeaturesInfo" style="display: none;">
+                <strong>특수 기능 (다중 모드):</strong>
+                <ul>
+                    <li>특별 턴: 매 5턴마다 대각선 이동이 가능합니다.</li>
+                    <li>분쟁 지역: 빨간색 테두리 셀은 이미 점령되었더라도 다시 점령할 수 있는 분쟁 지역입니다.</li>
+                    <li>장벽 파괴: 각 플레이어는 게임 중 한 번의 장벽을 파괴할 수 있으나, 바로 이동은 할 수 없습니다.</li>
                 </ul>
             </div>
         </div>
@@ -715,7 +789,14 @@
             gameMode: '',                 // 게임 모드 (oneVsOne, multi)
             multiMode: '',                // 다중 모드 타입 (trident, pacific)
             playerOrder: [],              // 플레이어 순서 배열
-            isGameOver: false             // 게임 종료 상태
+            isGameOver: false,            // 게임 종료 상태
+            
+            // 특수 기능 관련 변수
+            isSpecialTurn: false,         // 특별 턴 여부 (대각선 이동)
+            disputedCells: [],            // 분쟁 지역 셀 목록 [{x, y}, ...]
+            wallBreakUsed: {},            // 플레이어별 장벽 파괴 사용 여부
+            wallBreakMode: false,         // 장벽 파괴 모드 활성화 여부
+            breakableWalls: []            // 파괴 가능한 벽 목록 [{x, y}, ...]
         };
 
         // 맵 설정
@@ -754,7 +835,8 @@
                 height: 11,
                 cellSize: 38,
                 wallCount: { min: 5, max: 10 },
-                maxTurns: 81
+                maxTurns: 81,
+                disputedCellCount: 3     // 추가: 분쟁 지역 셀 개수
             },
             // 태평양 분지도 맵 (1:1:1:1 모드)
             pacific: {
@@ -762,7 +844,8 @@
                 height: 8,
                 cellSize: 45,
                 wallCount: { min: 3, max: 6 },
-                maxTurns: 64
+                maxTurns: 64,
+                disputedCellCount: 4     // 추가: 분쟁 지역 셀 개수
             },
             // 섬맵 (14x14 - 4인 모드로 수정)
             islandMap: {
@@ -770,7 +853,8 @@
                 height: 14,
                 cellSize: 32,
                 wallCount: { min: 5, max: 10 },
-                maxTurns: 130
+                maxTurns: 130,
+                disputedCellCount: 4     // 추가: 분쟁 지역 셀 개수
             },
             // 미로맵 (14x14 - 3인 모드로 수정)
             mazeMap: {
@@ -778,8 +862,30 @@
                 height: 10,
                 cellSize: 38,
                 wallCount: { min: 3, max: 6 },
-                maxTurns: 60
+                maxTurns: 60,
+                disputedCellCount: 0     // 미로맵은 분쟁 지역 없음
             }
+        };
+
+        // 분쟁 지역 고정 위치 정의
+        const disputedCellPositions = {
+            trident: [
+                {x: 5, y: 5},   // 중앙
+                {x: 2, y: 8},    // 왼쪽 하단부
+                {x: 8, y: 8}     // 오른쪽 하단부
+            ],
+            pacific: [
+                {x: 3, y: 1},    // 북미-아시아 사이
+                {x: 1, y: 4},    // 북미-남미 사이
+                {x: 6, y: 4},    // 아시아-호주 사이
+                {x: 4, y: 6}     // 남미-호주 사이
+            ],
+            islandMap: [
+                {x: 7, y: 4},    // 중앙 섬 상단
+                {x: 4, y: 7},    // 중앙 섬 왼쪽
+                {x: 10, y: 7},   // 중앙 섬 오른쪽
+                {x: 7, y: 10}    // 중앙 섬 하단
+            ]
         };
 
         // 플레이어 정보
@@ -888,6 +994,10 @@
         const resultTitleEl = document.getElementById('resultTitle');
         const resultDescEl = document.getElementById('resultDesc');
         const playerOrderDisplayEl = document.getElementById('playerOrderDisplay');
+        const specialTurnMessageEl = document.getElementById('specialTurnMessage');
+        const specialFeaturesEl = document.getElementById('specialFeatures');
+        const breakWallBtnEl = document.getElementById('breakWallBtn');
+        const specialFeaturesInfoEl = document.getElementById('specialFeaturesInfo');
 
         // 기본 이벤트 리스너
         document.getElementById('oneVsOneMode').addEventListener('click', () => selectGameMode('oneVsOne'));
@@ -896,6 +1006,7 @@
         document.getElementById('selectChina').addEventListener('click', () => selectCountry('china'));
         document.getElementById('restartBtn').addEventListener('click', showModeModal);
         document.getElementById('newGameBtn').addEventListener('click', showModeModal);
+        breakWallBtnEl.addEventListener('click', toggleWallBreakMode);
 
         // 맵 옵션 선택 이벤트 리스너 추가
         document.querySelectorAll('.map-option').forEach(option => {
@@ -950,7 +1061,6 @@
                 this.classList.add('selected');
             });
         });
-
         // 게임 모드 선택 모달 표시
         function showModeModal() {
             modeModalEl.style.display = 'flex';
@@ -1062,7 +1172,6 @@
                 tridentPlayerModalEl.style.display = 'none';
                 selectedPlayerEl = document.querySelector('#tridentPlayerModal .player-option.selected');
                 game.mapType = 'trident';
-                
                 // 트라이던트 모드에서는 3명의 플레이어, 순서를 랜덤화
                 game.playerOrder = shuffleArray(['usa', 'china', 'row']);
             } else if (game.multiMode === 'pacific') {
@@ -1102,6 +1211,12 @@
             // 타이틀 업데이트
             document.title = `세균전 관세전쟁 - 다중 모드 ${config.width}x${config.height}`;
             
+            // 장벽 파괴 능력 초기화
+            game.wallBreakUsed = {};
+            game.playerOrder.forEach(player => {
+                game.wallBreakUsed[player] = false;
+            });
+            
             initGame();
             
             // 컴퓨터 차례일 경우
@@ -1123,6 +1238,12 @@
             
             // 활성 셀 초기화
             game.activeCells = Array(config.height).fill().map(() => Array(config.width).fill(true));
+            
+            // 특수 기능 변수 초기화
+            game.isSpecialTurn = false;
+            game.disputedCells = [];
+            game.wallBreakMode = false;
+            game.breakableWalls = [];
             
             // 맵 타입에 따른 활성 셀 설정
             if (game.mapType === 'usa') {
@@ -1150,6 +1271,11 @@
                 (config.wallCount.max - config.wallCount.min + 1)) + config.wallCount.min;
             placeRandomWalls(wallCount);
             
+            // 다중 모드에서만 분쟁 지역 배치
+            if (game.gameMode === 'multi' && config.disputedCellCount > 0) {
+                placeDisputedCells();
+            }
+            
             // 게임 상태 초기화
             game.currentPlayer = game.playerOrder[0]; // 첫 번째 플레이어부터 시작
             game.turnCount = 1;
@@ -1159,10 +1285,640 @@
             // UI 업데이트
             renderBoard();
             updateInfo();
+            updateSpecialFeatures();
             
             // 결과 모달 숨기기
             resultModalEl.style.display = 'none';
             messageEl.textContent = '';
+        }
+        // 분쟁 지역 배치
+        function placeDisputedCells() {
+            if (!disputedCellPositions[game.mapType]) return;
+            
+            // 맵 타입에 따른 분쟁 지역 위치 설정
+            const positions = disputedCellPositions[game.mapType];
+            
+            // 분쟁 지역 설정
+            game.disputedCells = [];
+            
+            for (let i = 0; i < positions.length; i++) {
+                const { x, y } = positions[i];
+                // 유효한 위치인지 확인
+                if (x >= 0 && x < game.size.width && y >= 0 && y < game.size.height && 
+                    game.activeCells[y][x]) {
+                    game.disputedCells.push({ x, y });
+                }
+            }
+        }
+        
+        // 특수 기능 UI 업데이트
+        function updateSpecialFeatures() {
+            // 다중 모드에서만 특수 기능 표시
+            if (game.gameMode === 'multi') {
+                specialFeaturesEl.style.display = 'block';
+                specialFeaturesInfoEl.style.display = 'block';
+                
+                // 현재 플레이어의 장벽 파괴 버튼 상태 업데이트
+                breakWallBtnEl.disabled = game.wallBreakUsed[game.currentPlayer] || 
+                                         game.currentPlayer !== game.humanPlayer;
+                
+                // 특별 턴 확인 (5의 배수 턴)
+                game.isSpecialTurn = game.turnCount % 5 === 0;
+                
+                if (game.isSpecialTurn) {
+                    specialTurnMessageEl.style.display = 'block';
+                } else {
+                    specialTurnMessageEl.style.display = 'none';
+                }
+            } else {
+                specialFeaturesEl.style.display = 'none';
+                specialFeaturesInfoEl.style.display = 'none';
+                specialTurnMessageEl.style.display = 'none';
+                game.isSpecialTurn = false;
+            }
+        }
+        
+        // 장벽 파괴 모드 토글
+        function toggleWallBreakMode() {
+            if (game.isGameOver || game.currentPlayer !== game.humanPlayer) return;
+            
+            // 이미 사용했으면 리턴
+            if (game.wallBreakUsed[game.humanPlayer]) {
+                messageEl.textContent = '이미 장벽 파괴 능력을 사용했습니다.';
+                return;
+            }
+            
+            if (!game.wallBreakMode) {
+                // 장벽 파괴 모드 활성화
+                game.wallBreakMode = true;
+                boardEl.classList.add('wall-break-mode');
+                messageEl.textContent = '파괴할 장벽을 선택하세요. 취소하려면 다시 버튼을 누르세요.';
+                breakWallBtnEl.textContent = '장벽 파괴 취소';
+                
+                // 파괴 가능한 벽 찾기 (현재 플레이어의 말과 인접한 벽)
+                findBreakableWalls();
+                
+                if (game.breakableWalls.length === 0) {
+                    messageEl.textContent = '인접한 장벽이 없습니다.';
+                    game.wallBreakMode = false;
+                    boardEl.classList.remove('wall-break-mode');
+                    breakWallBtnEl.textContent = '장벽 파괴';
+                } else {
+                    // 파괴 가능한 벽 하이라이트
+                    renderBoard();
+                }
+            } else {
+                // 장벽 파괴 모드 비활성화
+                game.wallBreakMode = false;
+                boardEl.classList.remove('wall-break-mode');
+                messageEl.textContent = '';
+                breakWallBtnEl.textContent = '장벽 파괴';
+                renderBoard();
+            }
+        }
+        
+        // 파괴 가능한 벽 찾기
+        function findBreakableWalls() {
+            game.breakableWalls = [];
+            const player = game.currentPlayer;
+            
+            for (let y = 0; y < game.size.height; y++) {
+                for (let x = 0; x < game.size.width; x++) {
+                    // 플레이어 말이 있는 셀 찾기
+                    if (game.board[y][x] === player) {
+                        // 상하좌우 인접 셀 확인
+                        const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+                        
+                        for (const [dx, dy] of directions) {
+                            const nx = x + dx;
+                            const ny = y + dy;
+                            
+                            // 범위 확인
+                            if (nx >= 0 && nx < game.size.width && ny >= 0 && ny < game.size.height) {
+                                // 인접한 벽 찾기
+                                if (game.board[ny][nx] === 'wall' && game.activeCells[ny][nx]) {
+                                    // 중복 방지 확인
+                                    const wallExists = game.breakableWalls.some(wall => 
+                                        wall.x === nx && wall.y === ny);
+                                    
+                                    if (!wallExists) {
+                                        game.breakableWalls.push({ x: nx, y: ny });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 벽 파괴 실행
+        function breakWall(x, y) {
+            if (game.isGameOver || !game.wallBreakMode) return;
+            
+            // 파괴 가능한 벽인지 확인
+            const isBreakable = game.breakableWalls.some(wall => 
+                wall.x === x && wall.y === y);
+            
+            if (!isBreakable) {
+                messageEl.textContent = '이 장벽은 파괴할 수 없습니다.';
+                return;
+            }
+            
+            // 벽 제거 - 빈 셀로 만들고 방문하지 않은 상태로 변경
+            game.board[y][x] = '';
+            game.visitedCells[y][x] = false; // 반드시 false로 설정하여 이동 가능하게 함
+            
+            // 장벽 파괴 사용 표시
+            game.wallBreakUsed[game.currentPlayer] = true;
+            game.wallBreakMode = false;
+            boardEl.classList.remove('wall-break-mode');
+            breakWallBtnEl.textContent = '장벽 파괴'; // 버튼 텍스트 원복
+            
+            // 이번 턴에 장벽 파괴를 했음을 표시 (새 장벽 생성 방지용)
+            game.wallBrokenThisTurn = true;
+            
+            messageEl.textContent = '장벽 파괴 능력을 사용했습니다. 다음 턴에 이동 가능합니다.';
+            
+            // UI 업데이트
+            renderBoard();
+            updateSpecialFeatures();
+            
+            // 턴 종료
+            endTurn();
+        }
+        // 인접한 셀 확인 (수정됨 - 대각선 이동 지원)
+        function hasAdjacentCell(x, y, player) {
+            // 기본 방향 (상하좌우)
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            
+            // 특별 턴이면 대각선 방향도 추가
+            if (game.isSpecialTurn) {
+                directions.push([-1, -1], [-1, 1], [1, -1], [1, 1]);
+            }
+            
+            for (const [dx, dy] of directions) {
+                const nx = x + dx;
+                const ny = y + dy;
+                
+                if (nx >= 0 && nx < game.size.width && ny >= 0 && ny < game.size.height) {
+                    if (game.board[ny][nx] === player) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+
+        // 주변 상대방 셀 개수 세기 (수정됨 - 대각선 방향 지원)
+        function countAdjacentOpponentCells(x, y, player = game.currentPlayer) {
+            // 기본 방향 (상하좌우)
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            
+            // 특별 턴이면 대각선 방향도 추가
+            if (game.isSpecialTurn) {
+                directions.push([-1, -1], [-1, 1], [1, -1], [1, 1]);
+            }
+            
+            let count = 0;
+            
+            for (const [dx, dy] of directions) {
+                const nx = x + dx;
+                const ny = y + dy;
+                
+                // 범위 확인
+                if (nx >= 0 && nx < game.size.width && ny >= 0 && ny < game.size.height) {
+                    // 상대방 셀만 카운트
+                    const cellValue = game.board[ny][nx];
+                    if (cellValue && cellValue !== player && cellValue !== 'wall') {
+                        count++;
+                    }
+                }
+            }
+            
+            return count;
+        }
+
+        // 주변 상대방 셀 흡수 (수정됨 - 대각선 방향 지원)
+        function absorbAdjacentCells(x, y) {
+            const player = game.currentPlayer;
+            // 기본 방향 (상하좌우)
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            
+            // 특별 턴이면 대각선 방향도 추가
+            if (game.isSpecialTurn) {
+                directions.push([-1, -1], [-1, 1], [1, -1], [1, 1]);
+            }
+            
+            let capturedCells = 0;
+            
+            for (const [dx, dy] of directions) {
+                const nx = x + dx;
+                const ny = y + dy;
+                
+                // 범위 확인
+                if (nx >= 0 && nx < game.size.width && ny >= 0 && ny < game.size.height) {
+                    // 상대방 셀만 변경
+                    const opponent = game.board[ny][nx];
+                    if (opponent && opponent !== player && opponent !== 'wall') {
+                        game.board[ny][nx] = player;
+                        game.scores[player]++;
+                        game.scores[opponent]--;
+                        capturedCells++;
+                    }
+                }
+            }
+            
+            return capturedCells;
+        }
+        // 셀 클릭 처리 (수정됨)
+        function handleCellClick(x, y) {
+            if (game.isGameOver || game.currentPlayer !== game.humanPlayer) {
+                return;
+            }
+            
+            // 장벽 파괴 모드인 경우
+            if (game.wallBreakMode) {
+                if (game.board[y][x] === 'wall') {
+                    breakWall(x, y);
+                } else {
+                    messageEl.textContent = '장벽만 파괴할 수 있습니다.';
+                }
+                return;
+            }
+            
+            const value = game.board[y][x];
+            
+            // 벽이나 자기 영역은 선택 불가
+            if (value === 'wall' || value === game.currentPlayer) {
+                return;
+            }
+            
+            // 분쟁 지역이 아니고 이미 방문한 셀인지 확인
+            const isDisputedCell = game.disputedCells.some(cell => cell.x === x && cell.y === y);
+            
+            if (!isDisputedCell && game.visitedCells[y][x]) {
+                messageEl.textContent = '이미 방문한 곳입니다. 다른 곳을 선택하세요.';
+                return;
+            }
+            
+            // 인접한 셀 확인
+            if (!hasAdjacentCell(x, y, game.currentPlayer)) {
+                messageEl.textContent = '인접한 칸에만 놓을 수 있습니다.';
+                return;
+            }
+            
+            // 빈 셀이나 상대방 영역 점령
+            if (value === '' || game.playerOrder.includes(value)) {
+                // 상대방 영역이면 점수 조정
+                if (value && value !== game.currentPlayer) {
+                    game.scores[value]--;
+                }
+                
+                // 선택한 셀 점령
+                game.board[y][x] = game.currentPlayer;
+                game.scores[game.currentPlayer]++;
+                
+                // 방문한 셀로 표시 (분쟁 지역은 예외)
+                if (!isDisputedCell) {
+                    game.visitedCells[y][x] = true;
+                }
+                
+                // 세균전 방식으로 주변 상대방 셀 흡수
+                const capturedCells = absorbAdjacentCells(x, y);
+                
+                // 마지막 이동 위치 기록
+                game.lastMove = { x, y };
+                
+                // 이동 기록 추가
+                game.moveHistory.push({ x, y, player: game.currentPlayer });
+                
+                if (capturedCells > 0) {
+                    messageEl.textContent = `${capturedCells}개의 상대방 말을 흡수했습니다!`;
+                } else {
+                    messageEl.textContent = '';
+                }
+                
+                // UI 업데이트를 먼저 수행하고 지연 후 게임 상태 확인
+                renderBoard();
+                updateInfo();
+                
+                // 약간의 지연 후 턴 종료 처리
+                setTimeout(() => {
+                    // 점수 재계산
+                    recalculateScores();
+                    
+                    // 게임 종료 확인 (자동 종료 안함)
+                    endTurn(); // 턴 종료 처리
+                }, 100);
+            }
+        }
+        // 턴 종료 함수 수정 - 게임 종료 조건 강화
+        function endTurn() {
+            // 점수를 재계산
+            recalculateScores();
+            
+            // 게임 종료 조건 체크
+            if (checkGameOver()) {
+                return;
+            }
+            
+            // 장벽 파괴 관련 상태 초기화
+            game.wallBrokenThisTurn = false;
+            
+            // 다음 플레이어로 변경
+            changeToNextPlayer();
+            
+            // 특별 턴 상태 업데이트
+            if (game.gameMode === 'multi') {
+                game.isSpecialTurn = game.turnCount % 5 === 0;
+            }
+            
+            // UI 업데이트
+            renderBoard();
+            updateInfo();
+            updateSpecialFeatures();
+            
+            // 현재 플레이어가 이동할 수 있는지 확인
+            const currentPlayerCanMove = hasValidMove(game.currentPlayer);
+            
+            // 현재 플레이어가 이동할 수 없으면 다음 플레이어로
+            if (!currentPlayerCanMove) {
+                // 모든 플레이어가 이동할 수 없으면 게임 종료
+                if (allPlayersStuck()) {
+                    messageEl.textContent = '모든 이동이 완료되었습니다...';
+                    gameOver(); // 즉시 게임 종료 (setTimeout 제거)
+                    return;
+                }
+                
+                // 모든 플레이어의 이동 가능 여부 확인 (모든 장벽 부수기 버튼이 사용되었거나 더 이상 이동할 곳이 없으면 게임 종료)
+                let allPlayersStuckOrNoWallBreak = true;
+                for (const player of game.playerOrder) {
+                    if (hasValidMove(player) || (game.gameMode === 'multi' && !game.wallBreakUsed[player] && hasBreakableWalls(player))) {
+                        allPlayersStuckOrNoWallBreak = false;
+                        break;
+                    }
+                }
+                
+                if (allPlayersStuckOrNoWallBreak) {
+                    messageEl.textContent = '더 이상 가능한 이동이 없습니다.';
+                    gameOver();
+                    return;
+                }
+                
+                messageEl.textContent = '이동할 곳이 없습니다. 턴을 넘깁니다.';
+                endTurn(); // 다음 턴으로
+                return;
+            }
+            
+            // 컴퓨터 차례일 경우 - 딜레이 증가
+            if (game.computerPlayers.includes(game.currentPlayer)) {
+                setTimeout(computerTurn, 1500); // 1.5초로 증가 (기존 1초)
+            }
+        }
+        // 플레이어가 장벽을 부술 수 있는지 확인하는 함수 추가
+        function hasBreakableWalls(player) {
+            // 이미 장벽 파괴를 사용했으면 false
+            if (game.wallBreakUsed[player]) return false;
+            
+            // 플레이어 위치 검색
+            const playerCells = [];
+            for (let y = 0; y < game.size.height; y++) {
+                for (let x = 0; x < game.size.width; x++) {
+                    if (game.board[y][x] === player) {
+                        playerCells.push({x, y});
+                    }
+                }
+            }
+            
+            // 각 플레이어 위치에서 인접한 벽 확인
+            for (const cell of playerCells) {
+                const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+                for (const [dx, dy] of directions) {
+                    const nx = cell.x + dx;
+                    const ny = cell.y + dy;
+                    
+                    if (nx >= 0 && nx < game.size.width && ny >= 0 && ny < game.size.height) {
+                        if (game.board[ny][nx] === 'wall') {
+                            return true; // 부술 수 있는 벽이 있음
+                        }
+                    }
+                }
+            }
+            
+            return false; // 부술 수 있는 벽이 없음
+        }
+        // 컴퓨터 턴 수정 - 속도 조절
+        function computerTurn() {
+            if (game.isGameOver || !game.computerPlayers.includes(game.currentPlayer)) {
+                return;
+            }
+            
+            // AI 플레이어의 장벽 파괴 능력 사용 결정
+            if (game.gameMode === 'multi' && !game.wallBreakUsed[game.currentPlayer]) {
+                // 50% 확률로 장벽 파괴 시도 (확률 증가)
+                if (Math.random() < 0.5) {
+                    // 파괴 가능한 장벽 찾기
+                    findBreakableWalls();
+                    
+                    if (game.breakableWalls.length > 0) {
+                        // 랜덤하게 장벽 선택
+                        const randomIndex = Math.floor(Math.random() * game.breakableWalls.length);
+                        const wall = game.breakableWalls[randomIndex];
+                        
+                        // 장벽 파괴
+                        game.board[wall.y][wall.x] = '';
+                        game.visitedCells[wall.y][wall.x] = false;
+                        
+                        // 장벽 파괴 사용 표시
+                        game.wallBreakUsed[game.currentPlayer] = true;
+                        
+                        // 이번 턴에 장벽 파괴를 했음을 표시 (새 장벽 생성 방지용)
+                        game.wallBrokenThisTurn = true;
+                        
+                        messageEl.textContent = `컴퓨터(${playerInfo[game.currentPlayer].displayName})가 장벽을 파괴했습니다!`;
+                        
+                        // UI 업데이트
+                        renderBoard();
+                        updateSpecialFeatures();
+                        
+                        // 턴 종료 - 약간의 지연 추가
+                        setTimeout(() => {
+                            endTurn();
+                        }, 500);
+                        return;
+                    }
+                }
+            }
+            
+            // 가능한 이동 찾기
+            const validMoves = findValidMoves(game.currentPlayer);
+            
+            if (validMoves.length > 0) {
+                // 점수 기준 정렬
+                validMoves.sort((a, b) => b.score - a.score);
+                
+                // 최고 점수 이동 선택 (전략적 랜덤성 추가)
+                let selectedIndex = 0;
+                
+                // 랜덤 요소 적용
+                if (Math.random() < 0.3 + (game.turnCount / 50)) {
+                    // 턴이 진행될수록 랜덤성 증가
+                    const randomFactor = Math.min(0.5, 0.3 + (game.turnCount / 50));
+                    
+                    if (Math.random() < randomFactor && validMoves.length > 1) {
+                        // 가끔은 최고 점수가 아닌 다른 이동 선택
+                        selectedIndex = Math.floor(Math.random() * Math.min(validMoves.length, 3));
+                    }
+                }
+                
+                const move = validMoves[selectedIndex];
+                
+                // 상대방 영역이면 점수 조정
+                const opponent = game.board[move.y][move.x];
+                if (opponent && opponent !== game.currentPlayer) {
+                    game.scores[opponent]--;
+                }
+                
+                // 이동 실행
+                game.board[move.y][move.x] = game.currentPlayer;
+                game.scores[game.currentPlayer]++;
+                
+                // 방문한 셀로 표시 (분쟁 지역은 예외)
+                const isDisputedCell = game.disputedCells.some(cell => 
+                    cell.x === move.x && cell.y === move.y);
+                
+                if (!isDisputedCell) {
+                    game.visitedCells[move.y][move.x] = true;
+                }
+                
+                // 마지막 이동 위치 기록
+                game.lastMove = { x: move.x, y: move.y };
+                
+                // 이동 기록 추가
+                game.moveHistory.push({ x: move.x, y: move.y, player: game.currentPlayer });
+                
+                // 주변 상대방 셀 흡수
+                const capturedCells = absorbAdjacentCells(move.x, move.y);
+                
+                if (capturedCells > 0) {
+                    messageEl.textContent = `컴퓨터(${playerInfo[game.currentPlayer].displayName})가 ${capturedCells}개의 말을 흡수했습니다!`;
+                } else {
+                    messageEl.textContent = `컴퓨터(${playerInfo[game.currentPlayer].displayName})가 이동했습니다`;
+                }
+                
+                // 턴 종료 - 약간의 지연 추가
+                setTimeout(() => {
+                    endTurn();
+                }, 300);
+            } else {
+                messageEl.textContent = `컴퓨터(${playerInfo[game.currentPlayer].displayName})가 이동할 곳이 없습니다`;
+                // 턴 종료 - 약간의 지연 추가
+                setTimeout(() => {
+                    endTurn();
+                }, 300);
+            }
+        }       
+        // 유효한 이동 목록 찾기 (수정됨)
+        function findValidMoves(player) {
+            const validMoves = [];
+            
+            for (let y = 0; y < game.size.height; y++) {
+                for (let x = 0; x < game.size.width; x++) {
+                    // 활성 셀인지 확인
+                    if (!game.activeCells[y][x]) continue;
+                    
+                    // 분쟁 지역인지 확인
+                    const isDisputedCell = game.disputedCells.some(cell => cell.x === x && cell.y === y);
+                    
+                    // 분쟁 지역이 아니면서 이미 방문한 셀이면 제외
+                    if (!isDisputedCell && game.visitedCells[y][x]) continue;
+                    
+                    // 빈 칸이나 상대 영역인지 확인
+                    if (game.board[y][x] === '' || 
+                        (game.board[y][x] !== player && game.board[y][x] !== 'wall')) {
+                        
+                        // 인접한 셀 확인
+                        if (hasAdjacentCell(x, y, player)) {
+                            // 점수 계산: 얼마나 많은 상대 셀을 흡수할 수 있는지
+                            let absorptionScore = countAdjacentOpponentCells(x, y, player);
+                            
+                            // 기본 점수 + 흡수 점수
+                            let score = 1 + absorptionScore;
+                            
+                            // 상대방 영역이면 추가 점수
+                            if (game.board[y][x] && game.board[y][x] !== player) {
+                                score += 1;
+                            }
+
+                            // 전략적 점수 조정
+                            // 1. 코너나 가장자리는 가치가 높음
+                            if ((x === 0 || x === game.size.width-1) && (y === 0 || y === game.size.height-1)) {
+                                // 코너
+                                score += 3;
+                            } else if (x === 0 || x === game.size.width-1 || y === 0 || y === game.size.height-1) {
+                                // 가장자리
+                                score += 1;
+                            }
+                            
+                            // 2. 분쟁 지역은 전략적으로 중요함
+                            if (isDisputedCell) {
+                                score += 4;
+                            }
+                            
+                            // 3. 대각선 이동이 가능한 특별 턴에서는 대각선 이동에 보너스
+                            if (game.isSpecialTurn) {
+                                // 대각선 방향 확인
+                                const isDiagonalMove = game.moveHistory.length > 0 && 
+                                    Math.abs(x - game.lastMove.x) === 1 && 
+                                    Math.abs(y - game.lastMove.y) === 1;
+                                
+                                if (isDiagonalMove) {
+                                    score += 2;
+                                }
+                            }
+                            
+                            // 4. 게임 진행 상황에 따른 전략 변경
+                            if (game.turnCount > 10) {
+                                // 게임 후반에는 더 공격적으로
+                                
+                                // 점수가 가장 높은 플레이어 찾기
+                                const maxScore = Math.max(...Object.values(game.scores));
+                                const topPlayers = game.playerOrder.filter(p => game.scores[p] === maxScore);
+                                
+                                if (game.scores[player] < maxScore) {
+                                    // 지고 있을 때는 더 위험한 이동도 감수
+                                    score += absorptionScore; // 흡수 점수 두 배로
+                                    
+                                    // 1등 플레이어를 공격할 기회가 있으면 추가 점수
+                                    if (game.board[y][x] && topPlayers.includes(game.board[y][x])) {
+                                        score += 5;
+                                    }
+                                } else if (topPlayers.includes(player)) {
+                                    // 1등일 때는 방어적으로
+                                    score += 2; // 안전한 이동에 가중치
+                                }
+                            }
+                            
+                            // 다중 모드에서의 추가 전략
+                            if (game.gameMode === 'multi') {
+                                // 약한 플레이어 공략
+                                const weakPlayers = game.playerOrder.filter(p => 
+                                    p !== player && game.scores[p] > 0 && game.scores[p] < game.scores[player] / 2);
+                                
+                                if (game.board[y][x] && weakPlayers.includes(game.board[y][x])) {
+                                    score += 3; // 약한 플레이어 공략에 추가 점수
+                                }
+                            }
+                            
+                            validMoves.push({x, y, score});
+                        }
+                    }
+                }
+            }
+            
+            return validMoves;
         }
 
         // 활성 셀 템플릿 설정
@@ -1562,7 +2318,7 @@
             }
         }
 
-        // 보드 렌더링
+        // 보드 렌더링 (수정됨)
         function renderBoard() {
             boardEl.innerHTML = '';
             const config = mapConfigs[game.mapType];
@@ -1625,11 +2381,52 @@
                     
                     cell.className = 'cell';
                     
+                    // 분쟁 지역 표시
+                    const isDisputedCell = game.disputedCells.some(cell => cell.x === x && cell.y === y);
+                    if (isDisputedCell) {
+                        cell.classList.add('disputed-cell');
+                    }
+                    
+                    // 특별 턴에서 대각선 이동 가능한 셀 표시
+                    if (game.isSpecialTurn && !game.visitedCells[y][x] && game.currentPlayer === game.humanPlayer) {
+                        // 현재 플레이어의 말과 대각선으로 인접한 셀 찾기
+                        let isDiagonalAdjacentCell = false;
+                        
+                        // 대각선 방향
+                        const diagonalDirections = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+                        
+                        for (const [dx, dy] of diagonalDirections) {
+                            const nx = x + dx;
+                            const ny = y + dy;
+                            
+                            if (nx >= 0 && nx < game.size.width && ny >= 0 && ny < game.size.height) {
+                                if (game.board[ny][nx] === game.currentPlayer) {
+                                    isDiagonalAdjacentCell = true;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (isDiagonalAdjacentCell) {
+                            cell.classList.add('diagonal-available');
+                        }
+                    }
+                    
                     const value = game.board[y][x];
                     if (value && value !== 'wall') {
                         cell.classList.add(value); // 플레이어 클래스 추가
                     } else if (value === 'wall') {
                         cell.classList.add('wall');
+                        
+                        // 장벽 파괴 모드에서 파괴 가능한 벽 표시
+                        if (game.wallBreakMode) {
+                            const isBreakable = game.breakableWalls.some(wall => 
+                                wall.x === x && wall.y === y);
+                                
+                            if (isBreakable) {
+                                cell.classList.add('breakable-wall');
+                            }
+                        }
                     } else if (game.visitedCells[y][x]) {
                         // 빈 셀이지만 방문한 경우
                         cell.classList.add('visited');
@@ -1688,182 +2485,6 @@
             }
         }
 
-        // 셀 클릭 처리 (수정됨)
-        function handleCellClick(x, y) {
-            if (game.isGameOver || game.currentPlayer !== game.humanPlayer) {
-                return;
-            }
-            
-            // 이미 방문한 셀인지 확인
-            if (game.visitedCells[y][x]) {
-                messageEl.textContent = '이미 방문한 곳입니다. 다른 곳을 선택하세요.';
-                return;
-            }
-            
-            const value = game.board[y][x];
-            
-            // 벽이나 자기 영역은 선택 불가
-            if (value === 'wall' || value === game.currentPlayer) {
-                return;
-            }
-            
-            // 인접한 셀 확인
-            if (!hasAdjacentCell(x, y, game.currentPlayer)) {
-                messageEl.textContent = '인접한 칸에만 놓을 수 있습니다.';
-                return;
-            }
-            
-            // 빈 셀이나 상대방 영역 점령
-            if (value === '' || game.playerOrder.includes(value)) {
-                // 상대방 영역이면 점수 조정
-                if (value && value !== game.currentPlayer) {
-                    game.scores[value]--;
-                }
-                
-                // 선택한 셀 점령
-                game.board[y][x] = game.currentPlayer;
-                game.scores[game.currentPlayer]++;
-                
-                // 방문한 셀로 표시
-                game.visitedCells[y][x] = true;
-                
-                // 세균전 방식으로 주변 상대방 셀 흡수
-                const capturedCells = absorbAdjacentCells(x, y);
-                
-                // 마지막 이동 위치 기록
-                game.lastMove = { x, y };
-                
-                // 이동 기록 추가
-                game.moveHistory.push({ x, y, player: game.currentPlayer });
-                
-                if (capturedCells > 0) {
-                    messageEl.textContent = `${capturedCells}개의 상대방 말을 흡수했습니다!`;
-                } else {
-                    messageEl.textContent = '';
-                }
-                
-                // UI 업데이트를 먼저 수행하고 지연 후 게임 상태 확인
-                renderBoard();
-                updateInfo();
-                
-                // 약간의 지연 후 턴 종료 처리
-                setTimeout(() => {
-                    // 점수 재계산
-                    recalculateScores();
-                    
-                    // 게임 종료 확인 (자동 종료 안함)
-                    endTurn(); // 턴 종료 처리
-                }, 100);
-            }
-        }
-
-        // 인접한 셀 확인
-        function hasAdjacentCell(x, y, player) {
-            // 상하좌우 4방향 확인
-            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-            
-            for (const [dx, dy] of directions) {
-                const nx = x + dx;
-                const ny = y + dy;
-                
-                if (nx >= 0 && nx < game.size.width && ny >= 0 && ny < game.size.height) {
-                    if (game.board[ny][nx] === player) {
-                        return true;
-                    }
-                }
-            }
-            
-            return false;
-        }
-
-        // 주변 상대방 셀 개수 세기
-        function countAdjacentOpponentCells(x, y, player = game.currentPlayer) {
-            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // 상하좌우 4방향
-            let count = 0;
-            
-            for (const [dx, dy] of directions) {
-                const nx = x + dx;
-                const ny = y + dy;
-                
-                // 범위 확인
-                if (nx >= 0 && nx < game.size.width && ny >= 0 && ny < game.size.height) {
-                    // 상대방 셀만 카운트
-                    const cellValue = game.board[ny][nx];
-                    if (cellValue && cellValue !== player && cellValue !== 'wall') {
-                        count++;
-                    }
-                }
-            }
-            
-            return count;
-        }
-
-        // 주변 상대방 셀 흡수 (세균전 방식 - 접촉하면 흡수)
-        function absorbAdjacentCells(x, y) {
-            const player = game.currentPlayer;
-            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // 상하좌우 4방향
-            let capturedCells = 0;
-            
-            for (const [dx, dy] of directions) {
-                const nx = x + dx;
-                const ny = y + dy;
-                
-                // 범위 확인
-                if (nx >= 0 && nx < game.size.width && ny >= 0 && ny < game.size.height) {
-                    // 상대방 셀만 변경
-                    const opponent = game.board[ny][nx];
-                    if (opponent && opponent !== player && opponent !== 'wall') {
-                        game.board[ny][nx] = player;
-                        game.scores[player]++;
-                        game.scores[opponent]--;
-                        capturedCells++;
-                    }
-                }
-            }
-            
-            return capturedCells;
-        }
-
-        // 턴 종료
-        function endTurn() {
-            // 점수를 재계산
-            recalculateScores();
-            
-            // 게임 종료 조건 체크
-            if (checkGameOver()) {
-                return;
-            }
-            
-            // 다음 플레이어로 변경
-            changeToNextPlayer();
-            
-            // UI 업데이트
-            renderBoard();
-            updateInfo();
-            
-            // 현재 플레이어가 이동할 수 있는지 확인
-            const currentPlayerCanMove = hasValidMove(game.currentPlayer);
-            
-            // 현재 플레이어가 이동할 수 없으면 다음 플레이어로
-            if (!currentPlayerCanMove) {
-                // 모든 플레이어가 이동할 수 없으면 게임 종료
-                if (allPlayersStuck()) {
-                    messageEl.textContent = '모든 이동이 완료되었습니다...';
-                    setTimeout(gameOver, 1000);
-                    return;
-                }
-                
-                messageEl.textContent = '이동할 곳이 없습니다. 턴을 넘깁니다.';
-                endTurn(); // 다음 턴으로
-                return;
-            }
-            
-            // 컴퓨터 차례일 경우
-            if (game.computerPlayers.includes(game.currentPlayer)) {
-                setTimeout(computerTurn, 1000);
-            }
-        }
-
         // 다음 플레이어로 변경
         function changeToNextPlayer() {
             // 현재 플레이어의 인덱스 찾기
@@ -1909,12 +2530,18 @@
             
             for (let y = 0; y < game.size.height; y++) {
                 for (let x = 0; x < game.size.width; x++) {
-                    // 방문하지 않은 셀이고, 빈 셀이거나 다른 플레이어 영역인 경우
-                    if (game.activeCells[y][x] && !game.visitedCells[y][x] && 
-                        (game.board[y][x] === '' || 
-                        (game.board[y][x] !== player && game.board[y][x] !== 'wall')) && 
-                        hasAdjacentCell(x, y, player)) {
-                        return true;
+                    // 활성 셀인지 확인
+                    if (game.activeCells[y][x]) {
+                        // 분쟁 지역인지 확인
+                        const isDisputedCell = game.disputedCells.some(cell => cell.x === x && cell.y === y);
+                        
+                        // 방문하지 않은 셀이거나 분쟁 지역이고, 빈 셀이거나 다른 플레이어 영역인 경우
+                        if ((isDisputedCell || !game.visitedCells[y][x]) && 
+                            (game.board[y][x] === '' || 
+                            (game.board[y][x] !== player && game.board[y][x] !== 'wall')) && 
+                            hasAdjacentCell(x, y, player)) {
+                            return true;
+                        }
                     }
                 }
             }
@@ -2054,145 +2681,7 @@
            resultModalEl.style.display = 'flex';
        }
 
-       // 컴퓨터 턴
-       function computerTurn() {
-           if (game.isGameOver || !game.computerPlayers.includes(game.currentPlayer)) {
-               return;
-           }
-           
-           // 가능한 이동 찾기
-           const validMoves = findValidMoves(game.currentPlayer);
-           
-           if (validMoves.length > 0) {
-               // 점수 기준 정렬
-               validMoves.sort((a, b) => b.score - a.score);
-               
-               // 최고 점수 이동 선택 (전략적 랜덤성 추가)
-               let selectedIndex = 0;
-               
-               // 랜덤 요소 적용
-               if (Math.random() < 0.3 + (game.turnCount / 50)) {
-                   // 턴이 진행될수록 랜덤성 증가
-                   const randomFactor = Math.min(0.5, 0.3 + (game.turnCount / 50));
-                   
-                   if (Math.random() < randomFactor && validMoves.length > 1) {
-                       // 가끔은 최고 점수가 아닌 다른 이동 선택
-                       selectedIndex = Math.floor(Math.random() * Math.min(validMoves.length, 3));
-                   }
-               }
-               
-               const move = validMoves[selectedIndex];
-               
-               // 상대방 영역이면 점수 조정
-               const opponent = game.board[move.y][move.x];
-               if (opponent && opponent !== game.currentPlayer) {
-                   game.scores[opponent]--;
-               }
-               
-               // 이동 실행
-               game.board[move.y][move.x] = game.currentPlayer;
-               game.scores[game.currentPlayer]++;
-               
-               // 방문한 셀로 표시
-               game.visitedCells[move.y][move.x] = true;
-               
-               // 마지막 이동 위치 기록
-               game.lastMove = { x: move.x, y: move.y };
-               
-               // 이동 기록 추가
-               game.moveHistory.push({ x: move.x, y: move.y, player: game.currentPlayer });
-               
-               // 주변 상대방 셀 흡수
-               const capturedCells = absorbAdjacentCells(move.x, move.y);
-               
-               if (capturedCells > 0) {
-                   messageEl.textContent = `컴퓨터(${playerInfo[game.currentPlayer].displayName})가 ${capturedCells}개의 말을 흡수했습니다!`;
-               } else {
-                   messageEl.textContent = `컴퓨터(${playerInfo[game.currentPlayer].displayName})가 이동했습니다`;
-               }
-               
-               endTurn();
-           } else {
-               messageEl.textContent = `컴퓨터(${playerInfo[game.currentPlayer].displayName})가 이동할 곳이 없습니다`;
-               endTurn();
-           }
-       }
-
-       // 유효한 이동 목록 찾기
-       function findValidMoves(player) {
-           const validMoves = [];
-           
-           for (let y = 0; y < game.size.height; y++) {
-               for (let x = 0; x < game.size.width; x++) {
-                   // 방문하지 않은 셀이고, 빈 칸이나 상대 영역인 경우
-                   if (game.activeCells[y][x] && !game.visitedCells[y][x] && 
-                       (game.board[y][x] === '' || 
-                        (game.board[y][x] !== player && game.board[y][x] !== 'wall')) && 
-                       hasAdjacentCell(x, y, player)) {
-                       
-                       // 점수 계산: 얼마나 많은 상대 셀을 흡수할 수 있는지
-                       let absorptionScore = countAdjacentOpponentCells(x, y, player);
-                       
-                       // 기본 점수 + 흡수 점수
-                       let score = 1 + absorptionScore;
-                       
-                       // 상대방 영역이면 추가 점수
-                       if (game.board[y][x] && game.board[y][x] !== player) {
-                           score += 1;
-                       }
-
-                       // 전략적 점수 조정
-                       // 1. 코너나 가장자리는 가치가 높음
-                       if ((x === 0 || x === game.size.width-1) && (y === 0 || y === game.size.height-1)) {
-                           // 코너
-                           score += 3;
-                       } else if (x === 0 || x === game.size.width-1 || y === 0 || y === game.size.height-1) {
-                           // 가장자리
-                           score += 1;
-                       }
-                       
-                       // 2. 게임 진행 상황에 따른 전략 변경
-                       if (game.turnCount > 10) {
-                           // 게임 후반에는 더 공격적으로
-                           
-                           // 점수가 가장 높은 플레이어 찾기
-                           const maxScore = Math.max(...Object.values(game.scores));
-                           const topPlayers = game.playerOrder.filter(p => game.scores[p] === maxScore);
-                           
-                           if (game.scores[player] < maxScore) {
-                               // 지고 있을 때는 더 위험한 이동도 감수
-                               score += absorptionScore; // 흡수 점수 두 배로
-                               
-                               // 1등 플레이어를 공격할 기회가 있으면 추가 점수
-                               if (game.board[y][x] && topPlayers.includes(game.board[y][x])) {
-                                   score += 5;
-                               }
-                           } else if (topPlayers.includes(player)) {
-                               // 1등일 때는 방어적으로
-                               score += 2; // 안전한 이동에 가중치
-                           }
-                       }
-                       
-                       // 다중 모드에서의 추가 전략
-                       if (game.gameMode === 'multi') {
-                           // 약한 플레이어 공략
-                           const weakPlayers = game.playerOrder.filter(p => 
-                               p !== player && game.scores[p] > 0 && game.scores[p] < game.scores[player] / 2);
-                           
-                           if (game.board[y][x] && weakPlayers.includes(game.board[y][x])) {
-                               score += 3; // 약한 플레이어 공략에 추가 점수
-                           }
-                       }
-                       
-                       validMoves.push({x, y, score});
-                   }
-               }
-           }
-           
-           return validMoves;
-       }
-
-    // 중국 국기 스타일 수정 - 별이 제대로 보이도록 수정
+        // 중국 국기 스타일 수정 - 별이 제대로 보이도록 수정
         const chinaStyleFix = `
         .china {
             background-color: #de2910 !important;
@@ -2245,10 +2734,42 @@
             z-index: 100 !important;
         }
         `;
+
+        // 특별 기능 관련 추가 스타일
+        const specialFeaturesStyleFix = `
+        .disputed-cell {
+            box-shadow: inset 0 0 0 2px #ff0000 !important;
+        }
+        .diagonal-available {
+            box-shadow: inset 0 0 0 2px #ff9800 !important;
+        }
+        .breakable-wall {
+            box-shadow: inset 0 0 0 3px #ffeb3b !important;
+            cursor: pointer !important;
+        }
+        .wall-break-mode .wall:not(.breakable-wall) {
+            opacity: 0.5 !important;
+        }
+        .special-turn-message {
+            background-color: #ffe0b2 !important;
+            color: #e65100 !important;
+            padding: 8px 12px !important;
+            border-radius: 5px !important;
+            margin: 10px 0 !important;
+            font-weight: bold !important;
+            animation: pulse 1.5s infinite !important;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(230, 81, 0, 0.4) !important; }
+            70% { box-shadow: 0 0 0 10px rgba(230, 81, 0, 0) !important; }
+            100% { box-shadow: 0 0 0 0 rgba(230, 81, 0, 0) !important; }
+        }
+        `;
+        
         // 스타일 적용 함수 수정
         function fixStyles() {
             const styleEl = document.createElement('style');
-            styleEl.textContent = chinaStyleFix + usaStyleFix + rowStyleFix + `
+            styleEl.textContent = chinaStyleFix + usaStyleFix + rowStyleFix + specialFeaturesStyleFix + `
             /* 작은 셀에 맞게 아이콘 크기 조정 */
             @media (max-width: 576px) {
                 .china::after {
