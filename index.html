@@ -3449,42 +3449,32 @@
                 .cell {
                     transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out;
                 }
-            /* 모바일에서 셀 크기 조정 */
-            @media (max-width: 576px) {
-                .cell {
-                    width: 35px !important; /* 모바일에서 고정 셀 크기 */
-                    height: 35px !important;
-                }
             }
-            
             /* 작은 셀에 맞게 아이콘 크기 조정 */
-            @media (max-width: 576px) {
-                .china::after {
-                    font-size: 16px !important;
-                }
-                .usa::after {
-                    font-size: 8px !important;
-                }
-                .row::after, .wto::after, .imf::after {
-                    font-size: 14px !important;
-                }
-                .visited::after {
-                    font-size: 14px !important;
-                }
+               @media (max-width: 576px) {
+                    .china::after {
+                        font-size: 16px !important;
+                    }
+                    .usa::after {
+                        font-size: 8px !important;
+                    }
+                    .row::after, .wto::after, .imf::after {
+                        font-size: 14px !important;
+                    }
+                    .visited::after {
+                        font-size: 14px !important;
+                    }
             }
             
             /* 보드 래퍼 최대 높이 설정 */
-            .board-wrapper {
-                width: 100%;
-                max-width: 600px;
-                overflow: auto !important; /* 스크롤 강제 활성화 */
-                max-height: 60vh; /* 화면 높이의 60%로 제한 */
-                -webkit-overflow-scrolling: touch; /* iOS 스크롤 개선 */
-                margin: 0 auto;
-                padding: 5px;
-                border: 1px solid #ddd; /* 경계 표시를 위한 테두리 */
-                border-radius: 5px;
-            }
+               .board-wrapper {
+                   width: 100%;
+                   max-width: 600px;
+                   overflow-x: auto;
+                   overflow-y: auto;
+                   -webkit-overflow-scrolling: touch;
+                   margin: 0 auto;
+                }
                 /* 작은 맵을 중앙에 정렬 */
                 .board {
                     margin: 0 auto;
